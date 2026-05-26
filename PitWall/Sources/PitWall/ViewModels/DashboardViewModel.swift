@@ -8,6 +8,7 @@ enum ConnectionStatus: String, Sendable {
     case error
 }
 
+@MainActor
 @Observable
 final class DashboardViewModel {
     var liveState: LiveState?
@@ -31,23 +32,23 @@ final class DashboardViewModel {
         liveState?.server.status ?? .stopped
     }
 
+    private let mc: MCClient
     private let api: PitWallAPI
     private let sseClient = SSEClient()
-    private let authManager: AuthManager
     private let haptics = HapticsManager.shared
     private var streamTask: Task<Void, Never>?
 
-    init(authManager: AuthManager, baseURL: URL = URL(string: "https://pitwall.m1circuit.com")!) {
-        self.authManager = authManager
-        self.api = PitWallAPI(baseURL: baseURL, authManager: authManager)
+    init(mc: MCClient) {
+        self.mc = mc
+        self.api = PitWallAPI(mc: mc)
     }
 
     // MARK: - Connection lifecycle
 
     func connect() {
         guard connectionStatus == .disconnected || connectionStatus == .error else { return }
-        guard authManager.isAuthenticated, let token = authManager.token else {
-            error = "Not authenticated"
+        guard let base = mc.attachedMCURL else {
+            error = "No Mobile Command attached"
             connectionStatus = .error
             return
         }
@@ -55,8 +56,8 @@ final class DashboardViewModel {
         connectionStatus = .connecting
         error = nil
 
-        let sseURL = URL(string: "https://pitwall.m1circuit.com/api/pitwall/state")!
-        let headers = ["Authorization": "Bearer \(token)"]
+        let sseURL = base.appendingPathComponent("api/pitwall/state")
+        let headers = ["X-PitWall-Key": mc.clientKey]
 
         streamTask = Task { [weak self] in
             guard let self else { return }
@@ -65,6 +66,7 @@ final class DashboardViewModel {
                 self.connectionStatus = .connected
             }
             for await state in stream {
+                if Task.isCancelled { break }
                 let captured = state
                 await MainActor.run {
                     self.applyStateWithHaptics(newState: captured)
@@ -94,7 +96,6 @@ final class DashboardViewModel {
     private func applyStateWithHaptics(newState: LiveState) {
         let prev = liveState
 
-        // Detect position changes
         if let prevRigs = prev?.rigs {
             for rig in newState.rigs where rig.status == .occupied {
                 if let prevRig = prevRigs.first(where: { $0.id == rig.id }),
@@ -105,7 +106,6 @@ final class DashboardViewModel {
             }
         }
 
-        // Detect session starts (newly occupied rigs)
         if let prevRigs = prev?.rigs {
             for rig in newState.rigs where rig.status == .occupied {
                 if let prevRig = prevRigs.first(where: { $0.id == rig.id }),
@@ -114,8 +114,6 @@ final class DashboardViewModel {
                     break
                 }
             }
-
-            // Detect session ends (rigs no longer occupied)
             for prevRig in prevRigs where prevRig.status == .occupied {
                 if let current = newState.rigs.first(where: { $0.id == prevRig.id }),
                    current.status != .occupied {
@@ -125,7 +123,6 @@ final class DashboardViewModel {
             }
         }
 
-        // Detect new personal bests
         if let prevRigs = prev?.rigs {
             for rig in newState.rigs {
                 if let prevRig = prevRigs.first(where: { $0.id == rig.id }),
@@ -138,7 +135,6 @@ final class DashboardViewModel {
             }
         }
 
-        // Detect server status change
         if let prevServer = prev?.server, prevServer.status != newState.server.status {
             let isNegative = newState.server.status == .stopped || newState.server.status == .stopping
             haptics.serverStatusChange(isNegative: isNegative)

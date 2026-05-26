@@ -2,7 +2,7 @@ import SwiftUI
 
 struct CompetitionView: View {
     @Environment(DashboardViewModel.self) private var dashboardVM
-    @Environment(AuthManager.self) private var authManager
+    @Environment(MCClient.self) private var mc
     @State private var competitionVM: CompetitionViewModel?
     @State private var showCreateForm = false
 
@@ -62,7 +62,7 @@ struct CompetitionView: View {
             }
         }
         .task {
-            let vm = CompetitionViewModel(authManager: authManager)
+            let vm = CompetitionViewModel(mc: mc)
             competitionVM = vm
             await vm.loadCompetitions()
         }
@@ -207,10 +207,7 @@ struct CompetitionView: View {
     // MARK: - Formatting
 
     private func formatLap(_ ms: Int?) -> String {
-        guard let ms else { return "--:--.---" }
-        let m = ms / 60_000
-        let s = Double(ms % 60_000) / 1000.0
-        return String(format: "%d:%06.3f", m, s)
+        LapTimeFormatter.format(ms)
     }
 
     private func formatGap(_ ms: Int?) -> String {
@@ -338,7 +335,7 @@ struct CompetitionRow: View {
 // MARK: - Create Competition Sheet
 
 struct CreateCompetitionSheet: View {
-    @Bindable var vm: CompetitionViewModel
+    let vm: CompetitionViewModel
     @Environment(\.dismiss) private var dismiss
 
     @State private var name = ""

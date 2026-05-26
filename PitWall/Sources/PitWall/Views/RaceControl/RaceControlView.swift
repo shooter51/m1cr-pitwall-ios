@@ -2,6 +2,10 @@ import SwiftUI
 
 struct RaceControlView: View {
     @Environment(DashboardViewModel.self) private var viewModel
+    @Environment(MCClient.self) private var mc
+    @State private var posting = false
+    @State private var posted = false
+    @State private var postError: String?
 
     var body: some View {
         ZStack {
@@ -19,6 +23,56 @@ struct RaceControlView: View {
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
+        .toolbar { postToParentToolbar }
+        .alert("Post failed", isPresented: .init(
+            get: { postError != nil },
+            set: { if !$0 { postError = nil } }
+        )) {
+            Button("OK") { postError = nil }
+        } message: {
+            Text(postError ?? "")
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var postToParentToolbar: some ToolbarContent {
+        ToolbarItem(placement: .primaryAction) {
+            if mc.attached?.parentId != nil && mc.attached?.kind == .location {
+                Button {
+                    Task { await postToParent() }
+                } label: {
+                    Label(posted ? "Posted" : "Post to Parent", systemImage: posted ? "checkmark.circle.fill" : "arrow.up.right.square")
+                }
+                .disabled(posting || posted)
+            }
+        }
+    }
+
+    private func postToParent() async {
+        guard let base = mc.attachedMCURL, let state = viewModel.liveState else { return }
+        posting = true; defer { posting = false }
+        var req = URLRequest(url: base.appendingPathComponent("api/postings"))
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        mc.authorize(&req)
+        let body: [String: Any] = [
+            "track_id":      state.track.id,
+            "track_name":    state.track.name,
+            "vehicle_class": "GT3",   // refine later: derive from current session
+            "slot_total":    state.rigs.count,
+            "slot_open":     max(0, state.rigs.count - state.rigs.filter { $0.status == .occupied }.count),
+        ]
+        req.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        do {
+            let (_, response) = try await URLSession.shared.data(for: req)
+            if let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) {
+                posted = true
+            } else {
+                postError = "Post failed: \((response as? HTTPURLResponse)?.statusCode ?? 0)"
+            }
+        } catch {
+            postError = error.localizedDescription
+        }
     }
 
     @ViewBuilder
@@ -189,10 +243,7 @@ struct RaceControlView: View {
     }
 
     private func formatLap(_ ms: Int?) -> String {
-        guard let ms else { return "--:--.---" }
-        let m = ms / 60_000
-        let s = Double(ms % 60_000) / 1000.0
-        return String(format: "%d:%06.3f", m, s)
+        LapTimeFormatter.format(ms)
     }
 
     private func formatGap(_ ms: Int?) -> String {

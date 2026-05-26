@@ -5,7 +5,8 @@ import UIKit
 
 // MARK: - HapticsManager
 
-final class HapticsManager: @unchecked Sendable {
+@MainActor
+final class HapticsManager {
     static let shared = HapticsManager()
 
     private init() {}
@@ -62,7 +63,8 @@ final class HapticsManager: @unchecked Sendable {
 
 // MARK: - Stub for macOS / command-line builds
 
-final class HapticsManager: @unchecked Sendable {
+@MainActor
+final class HapticsManager {
     static let shared = HapticsManager()
     private init() {}
 

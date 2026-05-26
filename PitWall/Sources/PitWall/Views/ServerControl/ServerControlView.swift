@@ -6,10 +6,14 @@ struct ServerControlView: View {
     @State private var isLoading = false
     @State private var error: String?
     @State private var showConfirmStart = false
-    @Environment(AuthManager.self) private var authManager
+    @Environment(MCClient.self) private var mc
+    @State private var api: PitWallAPI?
 
-    private var api: PitWallAPI {
-        PitWallAPI(authManager: authManager)
+    private func resolvedAPI() -> PitWallAPI {
+        if let api { return api }
+        let newAPI = PitWallAPI(mc: mc)
+        api = newAPI
+        return newAPI
     }
 
     var body: some View {
@@ -110,7 +114,7 @@ struct ServerControlView: View {
         isLoading = true
         error = nil
         do {
-            serverStatus = try await api.serverStatus()
+            serverStatus = try await resolvedAPI().serverStatus()
         } catch {
             self.error = error.localizedDescription
         }
@@ -121,7 +125,7 @@ struct ServerControlView: View {
         isLoading = true
         error = nil
         do {
-            serverStatus = try await api.startServer()
+            serverStatus = try await resolvedAPI().startServer()
         } catch {
             self.error = error.localizedDescription
         }

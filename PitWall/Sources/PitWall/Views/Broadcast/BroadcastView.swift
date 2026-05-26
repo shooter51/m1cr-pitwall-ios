@@ -2,16 +2,20 @@ import SwiftUI
 
 struct BroadcastView: View {
     @Environment(DashboardViewModel.self) private var viewModel
-    @Environment(AuthManager.self) private var authManager
+    @Environment(MCClient.self) private var mc
 
     @State private var selectedMode: LiveState.BroadcastInfo.BroadcastMode = .auto
     @State private var selectedScene: String = "Main Feed"
     @State private var selectedCamera: CameraType = .onboard
     @State private var isSaving = false
     @State private var saveError: String?
+    @State private var api: PitWallAPI?
 
-    private var api: PitWallAPI {
-        PitWallAPI(authManager: authManager)
+    private func resolvedAPI() -> PitWallAPI {
+        if let api { return api }
+        let newAPI = PitWallAPI(mc: mc)
+        api = newAPI
+        return newAPI
     }
 
     private let availableScenes = [
@@ -371,23 +375,22 @@ struct BroadcastView: View {
     }
 
     private func saveMode(_ mode: LiveState.BroadcastInfo.BroadcastMode) async {
-        // API call to update broadcast mode would go here
-        // Endpoint not yet documented — fire-and-forget placeholder
+        // TODO: Wire to broadcast API — PATCH /api/pitwall/broadcast/mode
         _ = mode
     }
 
     private func saveScene(_ scene: String) async {
+        // TODO: Wire to broadcast API — PATCH /api/pitwall/broadcast/scene
         _ = scene
     }
 
     private func setFocus(rig: LiveRig) async {
+        // TODO: Wire to broadcast API — PATCH /api/pitwall/broadcast/focus
         _ = rig
     }
 
     private func formatLap(_ ms: Int) -> String {
-        let m = ms / 60_000
-        let s = Double(ms % 60_000) / 1000.0
-        return String(format: "%d:%06.3f", m, s)
+        LapTimeFormatter.format(ms)
     }
 }
 

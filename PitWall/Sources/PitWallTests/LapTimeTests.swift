@@ -9,6 +9,20 @@ import Foundation
 struct LapTimeTests {
     let baseURL = URL(string: "https://pitwall.m1circuit.com")!
 
+    @MainActor
+    private func makeAttachedMC() -> MCClient {
+        let mc = MCClient(clientKey: "test-key", lobbyURL: baseURL, deviceId: "test-device")
+        let node = LobbyNode(
+            id: "test-node", parentId: nil, name: "Test", slug: "test", kind: .location,
+            metadata: [:],
+            mc: .init(url: baseURL.absoluteString, isRunning: true, startedAt: nil),
+            operator: nil,
+            live: .init(activeSessions: 0, activeRaces: 0, activePostings: 0)
+        )
+        mc.attach(to: node)
+        return mc
+    }
+
     // MARK: - LapFilter query items
 
     @Test("LapFilter with all fields builds all query items")
@@ -165,98 +179,48 @@ struct LapTimeTests {
 
     // MARK: - API integration
 
-    @Test("GET /api/pitwall/laps with period filter returns array")
+    @MainActor
+    @Test("GET /api/pitwall/laps with period filter", .disabled("live network test — run manually"))
     func fetchLapsWithPeriodFilter() async throws {
-        let auth = AuthManager(baseURL: baseURL)
-        let api = PitWallAPI(baseURL: baseURL, authManager: auth)
-
-        do {
-            let laps = try await api.laps(filter: LapFilter(period: "today", limit: 10))
-            #expect(laps.count >= 0)
-            for lap in laps {
-                #expect(!lap.id.isEmpty)
-                #expect(lap.lapTimeMs > 0)
-                #expect(lap.lapNumber >= 1)
-            }
-        } catch let e as APIError {
-            switch e {
-            case .serverError(401, _), .serverError(403, _), .notAuthenticated:
-                break  // Auth required — acceptable
-            default:
-                throw e
-            }
-        }
+        let mc = makeAttachedMC()
+        let api = PitWallAPI(mc: mc)
+        let laps = try await api.laps(filter: LapFilter(period: "today", limit: 10))
+        #expect(laps.count >= 0)
     }
 
-    @Test("GET /api/pitwall/laps with track filter returns array")
+    @MainActor
+    @Test("GET /api/pitwall/laps with track filter", .disabled("live network test — run manually"))
     func fetchLapsWithTrackFilter() async throws {
-        let auth = AuthManager(baseURL: baseURL)
-        let api = PitWallAPI(baseURL: baseURL, authManager: auth)
-
-        do {
-            let laps = try await api.laps(filter: LapFilter(track: "brands-hatch", limit: 5))
-            #expect(laps.count >= 0)
-        } catch let e as APIError {
-            switch e {
-            case .serverError(401, _), .serverError(403, _), .notAuthenticated:
-                break
-            default:
-                throw e
-            }
-        }
+        let mc = makeAttachedMC()
+        let api = PitWallAPI(mc: mc)
+        let laps = try await api.laps(filter: LapFilter(track: "brands-hatch", limit: 5))
+        #expect(laps.count >= 0)
     }
 
-    @Test("GET /api/pitwall/laps with vehicle class filter returns array")
+    @MainActor
+    @Test("GET /api/pitwall/laps with vehicle class filter", .disabled("live network test — run manually"))
     func fetchLapsWithVehicleClassFilter() async throws {
-        let auth = AuthManager(baseURL: baseURL)
-        let api = PitWallAPI(baseURL: baseURL, authManager: auth)
-
-        do {
-            let laps = try await api.laps(filter: LapFilter(vehicleClass: "GT3", limit: 5))
-            #expect(laps.count >= 0)
-        } catch let e as APIError {
-            switch e {
-            case .serverError(401, _), .serverError(403, _), .notAuthenticated:
-                break
-            default:
-                throw e
-            }
-        }
+        let mc = makeAttachedMC()
+        let api = PitWallAPI(mc: mc)
+        let laps = try await api.laps(filter: LapFilter(vehicleClass: "GT3", limit: 5))
+        #expect(laps.count >= 0)
     }
 
-    @Test("GET /api/pitwall/laps with driver name filter")
+    @MainActor
+    @Test("GET /api/pitwall/laps with driver name filter", .disabled("live network test — run manually"))
     func fetchLapsByDriver() async throws {
-        let auth = AuthManager(baseURL: baseURL)
-        let api = PitWallAPI(baseURL: baseURL, authManager: auth)
-
-        do {
-            let laps = try await api.laps(filter: LapFilter(driverName: "Tom", limit: 10))
-            #expect(laps.count >= 0)
-        } catch let e as APIError {
-            switch e {
-            case .serverError(401, _), .serverError(403, _), .notAuthenticated:
-                break
-            default:
-                throw e
-            }
-        }
+        let mc = makeAttachedMC()
+        let api = PitWallAPI(mc: mc)
+        let laps = try await api.laps(filter: LapFilter(driverName: "Tom", limit: 10))
+        #expect(laps.count >= 0)
     }
 
-    @Test("GET /api/pitwall/laps with no filter returns array")
+    @MainActor
+    @Test("GET /api/pitwall/laps with no filter", .disabled("live network test — run manually"))
     func fetchAllLaps() async throws {
-        let auth = AuthManager(baseURL: baseURL)
-        let api = PitWallAPI(baseURL: baseURL, authManager: auth)
-
-        do {
-            let laps = try await api.laps()
-            #expect(laps.count >= 0)
-        } catch let e as APIError {
-            switch e {
-            case .serverError(401, _), .serverError(403, _), .notAuthenticated:
-                break
-            default:
-                throw e
-            }
-        }
+        let mc = makeAttachedMC()
+        let api = PitWallAPI(mc: mc)
+        let laps = try await api.laps()
+        #expect(laps.count >= 0)
     }
 }

@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct AIOperatorView: View {
-    @Environment(AuthManager.self) private var authManager
+    @Environment(MCClient.self) private var mc
     @State private var vm: AIOperatorViewModel?
     @State private var scrollProxy: ScrollViewProxy?
 
@@ -35,7 +35,7 @@ struct AIOperatorView: View {
         }
         .onAppear {
             if vm == nil {
-                let api = PitWallAPI(authManager: authManager)
+                let api = PitWallAPI(mc: mc)
                 vm = AIOperatorViewModel(api: api)
             }
         }
@@ -188,14 +188,34 @@ struct AIOperatorView: View {
     private var streamingIndicator: some View {
         HStack(spacing: 6) {
             ForEach(0..<3, id: \.self) { i in
-                Circle()
-                    .fill(PW.silverDim)
-                    .frame(width: 6, height: 6)
-                    .opacity(0.5)
+                AnimatedDot(delay: Double(i) * 0.2)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.leading, 12)
+    }
+}
+
+// MARK: - Animated dot for streaming indicator
+
+private struct AnimatedDot: View {
+    let delay: Double
+    @State private var opacity: Double = 0.3
+
+    var body: some View {
+        Circle()
+            .fill(PW.silverDim)
+            .frame(width: 6, height: 6)
+            .opacity(opacity)
+            .onAppear {
+                withAnimation(
+                    .easeInOut(duration: 0.6)
+                    .repeatForever(autoreverses: true)
+                    .delay(delay)
+                ) {
+                    opacity = 1.0
+                }
+            }
     }
 }
 

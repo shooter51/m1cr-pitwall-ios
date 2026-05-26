@@ -4,11 +4,15 @@ import Foundation
 
 // MARK: - ServerControl tests
 // Tests server status model and API calls.
-// Admin endpoints require auth — tests accept 401/403 gracefully.
 
 @Suite("ServerControl")
 struct ServerControlTests {
     let baseURL = URL(string: "https://pitwall.m1circuit.com")!
+
+    @MainActor
+    private func makeMC() -> MCClient {
+        MCClient(clientKey: "test-key", lobbyURL: baseURL, deviceId: "test-device")
+    }
 
     // MARK: - ServerStatus model
 
@@ -62,24 +66,24 @@ struct ServerControlTests {
         #expect(status.ip == nil)
     }
 
-    // MARK: - API calls (auth required)
+    // MARK: - API calls (require MC attachment)
 
-    @Test("GET /api/pitwall/server-control requires authentication")
-    func serverStatusRequiresAuth() async throws {
-        let auth = AuthManager(baseURL: baseURL)
-        auth.logout()
-        let api = PitWallAPI(baseURL: baseURL, authManager: auth)
+    @MainActor
+    @Test("serverStatus() throws when not attached")
+    func serverStatusRequiresAttachment() async throws {
+        let mc = makeMC()
+        let api = PitWallAPI(mc: mc)
 
         await #expect(throws: APIError.self) {
             try await api.serverStatus()
         }
     }
 
-    @Test("POST /api/pitwall/server-control requires authentication")
-    func startServerRequiresAuth() async throws {
-        let auth = AuthManager(baseURL: baseURL)
-        auth.logout()
-        let api = PitWallAPI(baseURL: baseURL, authManager: auth)
+    @MainActor
+    @Test("startServer() throws when not attached")
+    func startServerRequiresAttachment() async throws {
+        let mc = makeMC()
+        let api = PitWallAPI(mc: mc)
 
         await #expect(throws: APIError.self) {
             try await api.startServer()
@@ -88,17 +92,17 @@ struct ServerControlTests {
 
     // MARK: - DashboardViewModel server status integration
 
+    @MainActor
     @Test("DashboardViewModel.serverStatus falls back to .stopped without live state")
     func serverStatusFallback() {
-        let auth = AuthManager(baseURL: baseURL)
-        let vm = DashboardViewModel(authManager: auth)
+        let vm = DashboardViewModel(mc: makeMC())
         #expect(vm.serverStatus == .stopped)
     }
 
+    @MainActor
     @Test("DashboardViewModel.serverStatus reads from live state")
     func serverStatusFromLiveState() {
-        let auth = AuthManager(baseURL: baseURL)
-        let vm = DashboardViewModel(authManager: auth)
+        let vm = DashboardViewModel(mc: makeMC())
         vm.liveState = MockRigProvider.liveState
         #expect(vm.serverStatus == .running)
     }

@@ -114,10 +114,7 @@ struct RigGridView: View {
     }
 
     private func formatLap(_ ms: Int?) -> String {
-        guard let ms else { return "--:--.---" }
-        let m = ms / 60_000
-        let s = Double(ms % 60_000) / 1000.0
-        return String(format: "%d:%06.3f", m, s)
+        LapTimeFormatter.format(ms)
     }
 }
 
@@ -168,9 +165,7 @@ struct RigDetailSheet: View {
     }
 
     private func formatLap(_ ms: Int) -> String {
-        let m = ms / 60_000
-        let s = Double(ms % 60_000) / 1000.0
-        return String(format: "%d:%06.3f", m, s)
+        LapTimeFormatter.format(ms)
     }
 }
 

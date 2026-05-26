@@ -42,6 +42,7 @@ struct ToolCall: Identifiable, Sendable {
 
 // MARK: - AIOperatorViewModel
 
+@MainActor
 @Observable
 final class AIOperatorViewModel {
     var messages: [ChatMessage] = []
@@ -51,7 +52,6 @@ final class AIOperatorViewModel {
     var pendingApproval: ChatMessage?
 
     private let api: PitWallAPI
-    private let historyKey = "pitwall.chatHistory"
 
     static let suggestions = [
         "Who's fastest today?",
@@ -69,7 +69,6 @@ final class AIOperatorViewModel {
 
     // MARK: - Send message
 
-    @MainActor
     func send() async {
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !isStreaming else { return }
@@ -93,6 +92,7 @@ final class AIOperatorViewModel {
         do {
             let stream = await api.aiChat(messages: Array(apiMessages))
             for try await chunk in stream {
+                if Task.isCancelled { break }
                 if let text = chunk.text {
                     messages[assistantIdx].text += text
                 }
@@ -118,13 +118,11 @@ final class AIOperatorViewModel {
         saveHistory()
     }
 
-    @MainActor
     func sendSuggestion(_ text: String) async {
         inputText = text
         await send()
     }
 
-    @MainActor
     func approveAction(_ message: ChatMessage) async {
         pendingApproval = nil
         // Re-submit with approval audit ID
@@ -132,7 +130,6 @@ final class AIOperatorViewModel {
         await send()
     }
 
-    @MainActor
     func rejectAction(_ message: ChatMessage) {
         pendingApproval = nil
         let rejection = ChatMessage(role: .user, text: "Action rejected by operator.")
@@ -141,22 +138,31 @@ final class AIOperatorViewModel {
 
     func clearHistory() {
         messages = []
-        UserDefaults.standard.removeObject(forKey: historyKey)
+        try? FileManager.default.removeItem(at: Self.historyFileURL)
     }
 
-    // MARK: - History persistence
+    // MARK: - History persistence (encrypted file storage)
+    //
+    // Chat history is written to the app's Documents directory with the
+    // `.completeUntilFirstUserAuthentication` Data Protection attribute so the
+    // file is encrypted at rest and inaccessible before first unlock.
+
+    private static var historyFileURL: URL {
+        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        return docs.appendingPathComponent("pitwall_chat_history.json")
+    }
 
     private func saveHistory() {
         let storable = messages.map { msg in
             ["role": msg.role.rawValue, "text": msg.text]
         }
-        if let data = try? JSONSerialization.data(withJSONObject: storable) {
-            UserDefaults.standard.set(data, forKey: historyKey)
-        }
+        guard let data = try? JSONSerialization.data(withJSONObject: storable) else { return }
+        // Write with Data Protection: file is encrypted until device is unlocked after boot.
+        try? data.write(to: Self.historyFileURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
     }
 
     private func loadHistory() {
-        guard let data = UserDefaults.standard.data(forKey: historyKey),
+        guard let data = try? Data(contentsOf: Self.historyFileURL),
               let raw = try? JSONSerialization.jsonObject(with: data) as? [[String: String]]
         else { return }
 
