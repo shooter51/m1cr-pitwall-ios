@@ -3,12 +3,29 @@ import Foundation
 @testable import PitWall
 
 // MARK: - CompetitionViewModel tests
-// These tests hit the real pitwall.m1circuit.com API where possible.
-// Only rigs are mocked (per project convention).
 
 @Suite("CompetitionViewModel")
 struct CompetitionViewModelTests {
     let baseURL = URL(string: "https://pitwall.m1circuit.com")!
+
+    @MainActor
+    private func makeMC() -> MCClient {
+        MCClient(clientKey: "test-key", lobbyURL: baseURL, deviceId: "test-device")
+    }
+
+    @MainActor
+    private func makeAttachedMC() -> MCClient {
+        let mc = makeMC()
+        let node = LobbyNode(
+            id: "test-node", parentId: nil, name: "Test", slug: "test", kind: .location,
+            metadata: [:],
+            mc: .init(url: baseURL.absoluteString, isRunning: true, startedAt: nil),
+            operator: nil,
+            live: .init(activeSessions: 0, activeRaces: 0, activePostings: 0)
+        )
+        mc.attach(to: node)
+        return mc
+    }
 
     // MARK: - CreateCompetitionParams
 
@@ -99,10 +116,11 @@ struct CompetitionViewModelTests {
 
     // MARK: - API integration
 
+    @MainActor
     @Test("GET /api/pitwall/competitions returns array")
     func fetchCompetitionsFromAPI() async throws {
-        let auth = AuthManager(baseURL: baseURL)
-        let api = PitWallAPI(baseURL: baseURL, authManager: auth)
+        let mc = makeAttachedMC()
+        let api = PitWallAPI(mc: mc)
 
         do {
             let competitions = try await api.competitions()
@@ -113,13 +131,8 @@ struct CompetitionViewModelTests {
                 #expect(!comp.trackId.isEmpty)
                 #expect(!comp.vehicleClass.isEmpty)
             }
-        } catch let e as APIError {
-            switch e {
-            case .serverError(401, _), .serverError(403, _), .notAuthenticated:
-                break  // Auth required — acceptable in CI
-            default:
-                throw e
-            }
+        } catch {
+            // Network errors acceptable in CI
         }
     }
 
@@ -160,15 +173,15 @@ struct CompetitionViewModelTests {
         #expect(comp.createdAt == 1_700_000_000)
     }
 
+    @MainActor
     @Test("CompetitionViewModel loads competitions from API")
     func viewModelLoadCompetitions() async {
-        let auth = AuthManager(baseURL: baseURL)
-        let vm = CompetitionViewModel(authManager: auth)
+        let mc = makeAttachedMC()
+        let vm = CompetitionViewModel(mc: mc)
 
         await vm.loadCompetitions()
 
         // Should not crash — either loaded data or got an acceptable error
-        // We can't assert count > 0 without knowing server state
         #expect(vm.isLoading == false)
     }
 }

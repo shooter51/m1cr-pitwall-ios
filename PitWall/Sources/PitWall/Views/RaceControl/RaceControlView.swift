@@ -24,6 +24,14 @@ struct RaceControlView: View {
         .navigationBarTitleDisplayMode(.inline)
         #endif
         .toolbar { postToParentToolbar }
+        .alert("Post failed", isPresented: .init(
+            get: { postError != nil },
+            set: { if !$0 { postError = nil } }
+        )) {
+            Button("OK") { postError = nil }
+        } message: {
+            Text(postError ?? "")
+        }
     }
 
     @ToolbarContentBuilder

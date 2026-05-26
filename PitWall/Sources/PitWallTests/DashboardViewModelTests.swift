@@ -9,12 +9,17 @@ import Foundation
 struct DashboardViewModelTests {
     let baseURL = URL(string: "https://pitwall.m1circuit.com")!
 
+    @MainActor
+    private func makeMC() -> MCClient {
+        MCClient(clientKey: "test-key", lobbyURL: baseURL, deviceId: "test-device")
+    }
+
     // MARK: - Initial state
 
+    @MainActor
     @Test("DashboardViewModel starts disconnected")
     func initialConnectionStatus() {
-        let auth = AuthManager(baseURL: baseURL)
-        let vm = DashboardViewModel(authManager: auth)
+        let vm = DashboardViewModel(mc: makeMC())
         #expect(vm.connectionStatus == .disconnected)
         #expect(vm.liveState == nil)
         #expect(vm.error == nil)
@@ -22,62 +27,61 @@ struct DashboardViewModelTests {
 
     // MARK: - KPI derived properties with mock data
 
+    @MainActor
     @Test("activeSessionCount returns count of occupied rigs")
     func activeSessionCount() {
-        let auth = AuthManager(baseURL: baseURL)
-        let vm = DashboardViewModel(authManager: auth)
+        let vm = DashboardViewModel(mc: makeMC())
         vm.liveState = MockRigProvider.liveState
         let occupied = MockRigProvider.rigs.filter { $0.status == .occupied }.count
         #expect(vm.activeSessionCount == occupied)
     }
 
+    @MainActor
     @Test("availableRigCount returns count of available rigs")
     func availableRigCount() {
-        let auth = AuthManager(baseURL: baseURL)
-        let vm = DashboardViewModel(authManager: auth)
+        let vm = DashboardViewModel(mc: makeMC())
         vm.liveState = MockRigProvider.liveState
         let available = MockRigProvider.rigs.filter { $0.status == .available }.count
         #expect(vm.availableRigCount == available)
     }
 
+    @MainActor
     @Test("bestLapToday returns minimum bestLapMs across all rigs")
     func bestLapToday() {
-        let auth = AuthManager(baseURL: baseURL)
-        let vm = DashboardViewModel(authManager: auth)
+        let vm = DashboardViewModel(mc: makeMC())
         vm.liveState = MockRigProvider.liveState
         let expected = MockRigProvider.rigs.compactMap(\.bestLapMs).min()
         #expect(vm.bestLapToday == expected)
     }
 
+    @MainActor
     @Test("bestLapToday is nil when no rigs have laps")
     func bestLapTodayNil() {
-        let auth = AuthManager(baseURL: baseURL)
-        let vm = DashboardViewModel(authManager: auth)
+        let vm = DashboardViewModel(mc: makeMC())
         #expect(vm.bestLapToday == nil)
     }
 
+    @MainActor
     @Test("serverStatus returns running from mock live state")
     func serverStatusFromLiveState() {
-        let auth = AuthManager(baseURL: baseURL)
-        let vm = DashboardViewModel(authManager: auth)
+        let vm = DashboardViewModel(mc: makeMC())
         vm.liveState = MockRigProvider.liveState
         #expect(vm.serverStatus == .running)
     }
 
+    @MainActor
     @Test("serverStatus returns stopped when no live state")
     func serverStatusFallback() {
-        let auth = AuthManager(baseURL: baseURL)
-        let vm = DashboardViewModel(authManager: auth)
+        let vm = DashboardViewModel(mc: makeMC())
         #expect(vm.serverStatus == .stopped)
     }
 
-    // MARK: - Connect without auth
+    // MARK: - Connect without attachment
 
-    @Test("connect sets error status when not authenticated")
-    func connectWithoutAuth() {
-        let auth = AuthManager(baseURL: baseURL)
-        auth.logout()
-        let vm = DashboardViewModel(authManager: auth)
+    @MainActor
+    @Test("connect sets error status when not attached")
+    func connectWithoutAttachment() {
+        let vm = DashboardViewModel(mc: makeMC())
         vm.connect()
         #expect(vm.connectionStatus == .error)
         #expect(vm.error != nil)
@@ -85,10 +89,10 @@ struct DashboardViewModelTests {
 
     // MARK: - Disconnect
 
+    @MainActor
     @Test("disconnect sets status to disconnected")
     func disconnectSetsStatus() {
-        let auth = AuthManager(baseURL: baseURL)
-        let vm = DashboardViewModel(authManager: auth)
+        let vm = DashboardViewModel(mc: makeMC())
         vm.connectionStatus = .connecting
         vm.disconnect()
         #expect(vm.connectionStatus == .disconnected)
@@ -96,10 +100,10 @@ struct DashboardViewModelTests {
 
     // MARK: - Persistence (cache)
 
+    @MainActor
     @Test("loadCachedState does nothing when liveState is already set")
     func loadCachedStateSkipsWhenPopulated() {
-        let auth = AuthManager(baseURL: baseURL)
-        let vm = DashboardViewModel(authManager: auth)
+        let vm = DashboardViewModel(mc: makeMC())
         vm.liveState = MockRigProvider.liveState
         let originalTS = vm.liveState?.ts
 

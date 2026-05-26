@@ -164,32 +164,12 @@ private struct NewNodeSheet: View {
     }
 
     private func create() async {
-        // Reload so we can suggest a parent; for v1 we let users wire it later.
-        // Phase 1 limit: every new node starts as a root; the operator can edit parent later via the API.
         do {
-            // Will be added in a follow-up; for now create as root.
-            _ = try await create(name: name, slug: slug, kind: kind)
-            await vm.load()
+            _ = try await vm.createNode(name: name, slug: slug, kind: kind)
             dismiss()
         } catch {
             self.error = error.localizedDescription
         }
-    }
-
-    private func create(name: String, slug: String, kind: LobbyNode.Kind) async throws -> LobbyNode {
-        // Reach into the lobby client through the VM's load() flow.
-        // For brevity in Phase 1 we expose a thin helper here that just runs
-        // a one-shot HTTP call via URLSession; the proper place is LobbyClient
-        // and we'll route it through there in the next pass.
-        // (Intentional: avoids surfacing the LobbyClient actor through the VM.)
-        try await Task.yield()
-        return LobbyNode(
-            id: UUID().uuidString, parentId: nil, name: name, slug: slug, kind: kind,
-            metadata: [:],
-            mc: .init(url: nil, isRunning: false, startedAt: nil),
-            operator: nil,
-            live: .init(activeSessions: 0, activeRaces: 0, activePostings: 0),
-        )
     }
 
     private func kebab(_ s: String) -> String {

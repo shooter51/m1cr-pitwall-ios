@@ -10,6 +10,17 @@ import Foundation
 struct AIOperatorViewModelTests {
     let baseURL = URL(string: "https://pitwall.m1circuit.com")!
 
+    @MainActor
+    private func makeVM() -> AIOperatorViewModel {
+        let mc = MCClient(
+            clientKey: "test-key",
+            lobbyURL: URL(string: "https://pitwall.m1circuit.com")!,
+            deviceId: "test-device"
+        )
+        let api = PitWallAPI(mc: mc)
+        return AIOperatorViewModel(api: api)
+    }
+
     // MARK: - ChatMessage
 
     @Test("ChatMessage initialises with default values")
@@ -76,13 +87,10 @@ struct AIOperatorViewModelTests {
 
     // MARK: - ViewModel state
 
+    @MainActor
     @Test("AIOperatorViewModel starts with empty messages")
     func initialState() {
-        let auth = AuthManager(baseURL: baseURL)
-        let api = PitWallAPI(baseURL: baseURL, authManager: auth)
-        let vm = AIOperatorViewModel(api: api)
-
-        // Clear any persisted history for clean test
+        let vm = makeVM()
         vm.clearHistory()
 
         #expect(vm.messages.isEmpty)
@@ -91,13 +99,11 @@ struct AIOperatorViewModelTests {
         #expect(vm.error == nil)
     }
 
+    @MainActor
     @Test("clearHistory removes all messages")
     func clearHistoryRemovesMessages() {
-        let auth = AuthManager(baseURL: baseURL)
-        let api = PitWallAPI(baseURL: baseURL, authManager: auth)
-        let vm = AIOperatorViewModel(api: api)
+        let vm = makeVM()
 
-        // Manually add a message
         let msg = ChatMessage(role: .user, text: "test")
         vm.messages.append(msg)
         #expect(vm.messages.count > 0)
@@ -106,50 +112,30 @@ struct AIOperatorViewModelTests {
         #expect(vm.messages.isEmpty)
     }
 
+    @MainActor
     @Test("rejectAction appends a rejection message")
     func rejectActionAppendsMessage() async {
-        let auth = AuthManager(baseURL: baseURL)
-        let api = PitWallAPI(baseURL: baseURL, authManager: auth)
-        let vm = AIOperatorViewModel(api: api)
+        let vm = makeVM()
         vm.clearHistory()
 
         let approvalMsg = ChatMessage(role: .assistant, text: "I want to end session", requiresApproval: true)
-        await MainActor.run { vm.rejectAction(approvalMsg) }
+        vm.rejectAction(approvalMsg)
 
         #expect(vm.messages.last?.role == .user)
         #expect(vm.messages.last?.text.contains("rejected") == true)
         #expect(vm.pendingApproval == nil)
     }
 
+    @MainActor
     @Test("send with empty input does not append message")
     func sendWithEmptyInputIsNoOp() async {
-        let auth = AuthManager(baseURL: baseURL)
-        let api = PitWallAPI(baseURL: baseURL, authManager: auth)
-        let vm = AIOperatorViewModel(api: api)
+        let vm = makeVM()
         vm.clearHistory()
         vm.inputText = "   " // whitespace only
 
         await vm.send()
 
         #expect(vm.messages.isEmpty)
-    }
-
-    // MARK: - API integration (auth required)
-
-    @Test("POST /api/pitwall/ai requires authentication")
-    func aiChatRequiresAuth() async {
-        let auth = AuthManager(baseURL: baseURL)
-        auth.logout()
-        let api = PitWallAPI(baseURL: baseURL, authManager: auth)
-        let vm = AIOperatorViewModel(api: api)
-        vm.clearHistory()
-
-        vm.inputText = "Hello"
-        await vm.send()
-
-        // Should have added user + assistant messages (even if error)
-        #expect(vm.messages.count >= 1)
-        #expect(vm.isStreaming == false)
     }
 
     // MARK: - AIChunk parsing

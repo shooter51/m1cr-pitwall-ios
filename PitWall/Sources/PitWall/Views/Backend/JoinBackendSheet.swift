@@ -28,7 +28,7 @@ struct JoinBackendSheet: View {
                 } header: {
                     Text("Backend")
                 } footer: {
-                    Text("Lobby URL looks like https://pitwall.example.com/lobby. The client key is the shared secret from your backend's `.env`.")
+                    Text("Lobby URL looks like https://pitwall.example.com — the base URL of your PitWall server. The client key is the shared secret from your backend's `.env`.")
                 }
 
                 if let errorMessage {
@@ -73,7 +73,7 @@ struct JoinBackendSheet: View {
         errorMessage = nil
 
         // Test the connection by hitting /lobby/nodes once before saving.
-        var req = URLRequest(url: url.appendingPathComponent("nodes"))
+        var req = URLRequest(url: url.appendingPathComponent("lobby/nodes"))
         req.setValue(clientKey, forHTTPHeaderField: "X-PitWall-Key")
         req.timeoutInterval = 8
 

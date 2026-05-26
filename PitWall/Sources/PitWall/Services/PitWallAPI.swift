@@ -104,14 +104,14 @@ actor PitWallAPI {
         AsyncThrowingStream { continuation in
             Task { [mc] in
                 do {
-                    guard let base = mc.attachedMCURL else {
+                    guard let base = await mc.attachedMCURL else {
                         throw APIError.notAttached
                     }
                     let url = base.appendingPathComponent("/api/pitwall/ai")
                     var request = URLRequest(url: url)
                     request.httpMethod = "POST"
                     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                    request.setValue(mc.clientKey, forHTTPHeaderField: "X-PitWall-Key")
+                    request.setValue(await mc.clientKey, forHTTPHeaderField: "X-PitWall-Key")
 
                     let encoder = JSONEncoder()
                     encoder.keyEncodingStrategy = .convertToSnakeCase
@@ -164,7 +164,7 @@ actor PitWallAPI {
     // MARK: - Private helpers
 
     private func get<T: Decodable>(_ path: String, queryItems: [URLQueryItem]? = nil) async throws -> T {
-        let request = try buildRequest(method: "GET", path: path, queryItems: queryItems)
+        let request = try await buildRequest(method: "GET", path: path, queryItems: queryItems)
         return try await execute(request)
     }
 
@@ -173,7 +173,7 @@ actor PitWallAPI {
     }
 
     private func send<T: Decodable>(method: String, path: String, body: [String: Any]) async throws -> T {
-        var request = try buildRequest(method: method, path: path)
+        var request = try await buildRequest(method: method, path: path)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if !body.isEmpty {
             request.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -185,8 +185,8 @@ actor PitWallAPI {
         method: String,
         path: String,
         queryItems: [URLQueryItem]? = nil
-    ) throws -> URLRequest {
-        guard let base = mc.attachedMCURL else { throw APIError.notAttached }
+    ) async throws -> URLRequest {
+        guard let base = await mc.attachedMCURL else { throw APIError.notAttached }
 
         var components = URLComponents(url: base.appendingPathComponent(path), resolvingAgainstBaseURL: false)
         if let items = queryItems, !items.isEmpty {
@@ -198,7 +198,7 @@ actor PitWallAPI {
 
         var request = URLRequest(url: url)
         request.httpMethod = method
-        request.setValue(mc.clientKey, forHTTPHeaderField: "X-PitWall-Key")
+        request.setValue(await mc.clientKey, forHTTPHeaderField: "X-PitWall-Key")
         request.timeoutInterval = 10
         return request
     }

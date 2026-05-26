@@ -2,7 +2,7 @@ import Foundation
 
 /// Mirror of the `NodePayload` returned by Lobby (`/lobby/nodes`).
 /// See `m1cr-pitwall/docs/adr/0004-lobby-and-race-postings.md` §2.2.
-struct LobbyNode: Codable, Equatable, Identifiable, Hashable {
+struct LobbyNode: Codable, Equatable, Identifiable, Hashable, Sendable {
     let id: String
     let parentId: String?
     let name: String
@@ -39,7 +39,7 @@ struct LobbyNode: Codable, Equatable, Identifiable, Hashable {
 /// A tiny `Codable` wrapper so `metadata` (free-form JSON) round-trips through
 /// `JSONDecoder.keyDecodingStrategy = .convertFromSnakeCase` without losing
 /// data we can't statically type.
-enum AnyJSON: Codable, Equatable, Hashable {
+enum AnyJSON: Codable, Equatable, Hashable, Sendable {
     case string(String)
     case number(Double)
     case bool(Bool)

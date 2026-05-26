@@ -38,12 +38,12 @@ actor LobbyClient {
     }
 
     func listNodes() async throws -> [LobbyNode] {
-        let req = try buildRequest("GET", "/lobby/nodes")
+        let req = try await buildRequest("GET", "/lobby/nodes")
         return try await execute(req, as: LobbyNodeList.self).nodes
     }
 
     func createNode(_ body: CreateNodeBody) async throws -> LobbyNode {
-        var req = try buildRequest("POST", "/lobby/nodes")
+        var req = try await buildRequest("POST", "/lobby/nodes")
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.httpBody = try encoder.encode(body)
         struct Wrapper: Decodable { let node: LobbyNode }
@@ -51,12 +51,12 @@ actor LobbyClient {
     }
 
     func spawn(nodeId: String) async throws {
-        let req = try buildRequest("POST", "/lobby/nodes/\(nodeId)/spawn")
+        let req = try await buildRequest("POST", "/lobby/nodes/\(nodeId)/spawn")
         _ = try await executeRaw(req)
     }
 
     func updateNode(id: String, fields: [String: Any]) async throws -> LobbyNode {
-        var req = try buildRequest("PATCH", "/lobby/nodes/\(id)")
+        var req = try await buildRequest("PATCH", "/lobby/nodes/\(id)")
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.httpBody = try JSONSerialization.data(withJSONObject: fields)
         struct Wrap: Decodable { let node: LobbyNode }
@@ -64,17 +64,17 @@ actor LobbyClient {
     }
 
     func deleteNode(id: String) async throws {
-        let req = try buildRequest("DELETE", "/lobby/nodes/\(id)")
+        let req = try await buildRequest("DELETE", "/lobby/nodes/\(id)")
         _ = try await executeRaw(req)
     }
 
     func stop(nodeId: String) async throws {
-        let req = try buildRequest("POST", "/lobby/nodes/\(nodeId)/stop")
+        let req = try await buildRequest("POST", "/lobby/nodes/\(nodeId)/stop")
         _ = try await executeRaw(req)
     }
 
     func attach(nodeId: String) async throws {
-        var req = try buildRequest("POST", "/lobby/nodes/\(nodeId)/attach")
+        var req = try await buildRequest("POST", "/lobby/nodes/\(nodeId)/attach")
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         let body = AttachBody(deviceId: mc.deviceId, display: nil)
         req.httpBody = try encoder.encode(body)
@@ -82,7 +82,7 @@ actor LobbyClient {
     }
 
     func detach(nodeId: String) async throws {
-        var req = try buildRequest("POST", "/lobby/nodes/\(nodeId)/detach")
+        var req = try await buildRequest("POST", "/lobby/nodes/\(nodeId)/detach")
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.httpBody = try JSONSerialization.data(withJSONObject: ["device_id": mc.deviceId])
         _ = try await executeRaw(req)
@@ -133,11 +133,11 @@ actor LobbyClient {
 
     // MARK: - private
 
-    private func buildRequest(_ method: String, _ path: String) throws -> URLRequest {
-        let url = mc.lobbyURL.appendingPathComponent(path)
+    private func buildRequest(_ method: String, _ path: String) async throws -> URLRequest {
+        let url = await mc.lobbyURL.appendingPathComponent(path)
         var req = URLRequest(url: url)
         req.httpMethod = method
-        req.setValue(mc.clientKey, forHTTPHeaderField: "X-PitWall-Key")
+        req.setValue(await mc.clientKey, forHTTPHeaderField: "X-PitWall-Key")
         req.timeoutInterval = 10
         return req
     }

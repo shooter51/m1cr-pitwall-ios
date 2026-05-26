@@ -6,8 +6,9 @@ import Observation
 /// `Backend` in `BackendStore`. Switching backends is allowed at runtime.
 ///
 /// See `docs/PRD-mobile-command-v2.md` §"Hosting" and `docs/adr/0002-mc-runtime.md`.
+@MainActor
 @Observable
-final class MCClient: @unchecked Sendable {
+final class MCClient {
     /// Shared client key for the current Backend.
     private(set) var clientKey: String
 

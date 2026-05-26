@@ -8,6 +8,7 @@ enum ConnectionStatus: String, Sendable {
     case error
 }
 
+@MainActor
 @Observable
 final class DashboardViewModel {
     var liveState: LiveState?

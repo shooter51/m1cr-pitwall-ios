@@ -1,8 +1,9 @@
 import Foundation
 import Observation
 
+@MainActor
 @Observable
-final class LobbyViewModel: @unchecked Sendable {
+final class LobbyViewModel {
     enum State {
         case idle
         case loading
@@ -85,6 +86,14 @@ final class LobbyViewModel: @unchecked Sendable {
         } catch {
             state = .error(error.localizedDescription)
         }
+    }
+
+    @MainActor
+    func createNode(name: String, slug: String, kind: LobbyNode.Kind) async throws -> LobbyNode {
+        let body = CreateNodeBody(name: name, slug: slug, kind: kind, parentId: nil)
+        let node = try await lobby.createNode(body)
+        await load()
+        return node
     }
 
     @MainActor

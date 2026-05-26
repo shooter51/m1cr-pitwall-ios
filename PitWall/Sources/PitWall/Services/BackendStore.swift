@@ -5,8 +5,9 @@ import Observation
 /// Storage is UserDefaults (small JSON blob); the client key lives alongside
 /// because this is a closed-loop family network and the device is already trusted
 /// to hold it (matches the shared-key threat model from the PRD).
+@MainActor
 @Observable
-final class BackendStore: @unchecked Sendable {
+final class BackendStore {
     private(set) var backends: [Backend]
     private(set) var currentId: UUID?
 

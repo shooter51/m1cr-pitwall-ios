@@ -1,8 +1,9 @@
 import Foundation
 import Observation
 
+@MainActor
 @Observable
-final class RaceWallViewModel: @unchecked Sendable {
+final class RaceWallViewModel {
     private(set) var postings: [RacePosting] = []
     private(set) var error: String?
 
