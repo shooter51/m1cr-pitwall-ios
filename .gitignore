@@ -1,0 +1,12 @@
+.DS_Store
+PitWall/.build/
+PitWall/.swiftpm/
+*.xcuserstate
+xcuserdata/
+*.xcworkspace/xcuserdata
+DerivedData/
+*.ipa
+*.dSYM.zip
+*.dSYM
+*.bcsymbolmap
+*.resolved
