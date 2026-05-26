@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct AIOperatorView: View {
-    @Environment(AuthManager.self) private var authManager
+    @Environment(MCClient.self) private var mc
     @State private var vm: AIOperatorViewModel?
     @State private var scrollProxy: ScrollViewProxy?
 
@@ -35,7 +35,7 @@ struct AIOperatorView: View {
         }
         .onAppear {
             if vm == nil {
-                let api = PitWallAPI(authManager: authManager)
+                let api = PitWallAPI(mc: mc)
                 vm = AIOperatorViewModel(api: api)
             }
         }

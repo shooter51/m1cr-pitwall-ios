@@ -2,14 +2,14 @@ import SwiftUI
 
 struct AnalyticsView: View {
     @Environment(DashboardViewModel.self) private var viewModel
-    @Environment(AuthManager.self) private var authManager
+    @Environment(MCClient.self) private var mc
     @State private var sessions: [Session] = []
     @State private var laps: [LapTime] = []
     @State private var isLoading = false
     @State private var error: String?
 
     private var api: PitWallAPI {
-        PitWallAPI(authManager: authManager)
+        PitWallAPI(mc: mc)
     }
 
     var body: some View {
@@ -372,7 +372,9 @@ struct AnalyticsView: View {
             laps = try await fetchedLaps
         } catch let e as APIError {
             switch e {
-            case .notAuthenticated, .serverError(401, _), .serverError(403, _):
+            case .notAttached:
+                error = "No Mobile Command attached"
+            case .serverError(401, _), .serverError(403, _):
                 error = "Authentication required"
             default:
                 error = e.localizedDescription

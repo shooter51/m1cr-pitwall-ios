@@ -6,10 +6,10 @@ struct ServerControlView: View {
     @State private var isLoading = false
     @State private var error: String?
     @State private var showConfirmStart = false
-    @Environment(AuthManager.self) private var authManager
+    @Environment(MCClient.self) private var mc
 
     private var api: PitWallAPI {
-        PitWallAPI(authManager: authManager)
+        PitWallAPI(mc: mc)
     }
 
     var body: some View {

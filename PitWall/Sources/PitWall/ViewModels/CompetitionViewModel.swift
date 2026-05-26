@@ -7,14 +7,14 @@ final class CompetitionViewModel {
     var isLoading = false
     var error: String?
 
-    private let authManager: AuthManager
+    private let mc: MCClient
 
-    init(authManager: AuthManager) {
-        self.authManager = authManager
+    init(mc: MCClient) {
+        self.mc = mc
     }
 
     private var api: PitWallAPI {
-        PitWallAPI(authManager: authManager)
+        PitWallAPI(mc: mc)
     }
 
     @MainActor

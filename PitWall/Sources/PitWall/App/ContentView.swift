@@ -3,6 +3,7 @@ import SwiftUI
 enum Tab: String, CaseIterable {
     case rigs = "Rigs"
     case raceControl = "Race Control"
+    case raceWall = "Race Wall"
     case competition = "Competition"
     case broadcast = "Broadcast"
     case analytics = "Analytics"
@@ -13,6 +14,7 @@ enum Tab: String, CaseIterable {
         switch self {
         case .rigs: return "square.grid.2x2"
         case .raceControl: return "flag.checkered"
+        case .raceWall: return "rectangle.3.group.fill"
         case .competition: return "trophy"
         case .broadcast: return "video"
         case .analytics: return "chart.bar"
@@ -23,35 +25,41 @@ enum Tab: String, CaseIterable {
 }
 
 struct ContentView: View {
-    @Environment(AuthManager.self) private var authManager
+    @Environment(BackendStore.self) private var store
+    @Environment(MCClient.self) private var mc
     @Environment(DashboardViewModel.self) private var viewModel
     @State private var selectedTab: Tab = .rigs
     @State private var showAISheet = false
 
     var body: some View {
         Group {
-            if authManager.isAuthenticated {
-                mainView
+            if store.current == nil {
+                BackendPickerView()
+            } else if mc.attached != nil {
+                attachedView
             } else {
-                SettingsView()
+                LobbyView()
             }
         }
     }
 
+    private var tabsForKind: [Tab] {
+        let all = Tab.allCases
+        return mc.attachedIsOrg ? all : all.filter { $0 != .raceWall }
+    }
+
     @ViewBuilder
-    private var mainView: some View {
+    private var attachedView: some View {
         NavigationSplitView {
-            List(Tab.allCases, id: \.self, selection: $selectedTab) { tab in
+            List(tabsForKind, id: \.self, selection: $selectedTab) { tab in
                 Label(tab.rawValue, systemImage: tab.icon)
                     .tag(tab)
             }
             .listStyle(.sidebar)
-            .navigationTitle("PitWall")
+            .navigationTitle(mc.attached?.name ?? "PitWall")
             .toolbar {
                 ToolbarItem {
-                    Button {
-                        showAISheet = true
-                    } label: {
+                    Button { showAISheet = true } label: {
                         Image(systemName: "sparkles")
                     }
                 }
@@ -69,20 +77,14 @@ struct ContentView: View {
     @ViewBuilder
     private func detailView(for tab: Tab) -> some View {
         switch tab {
-        case .rigs:
-            RigGridView()
-        case .raceControl:
-            RaceControlView()
-        case .competition:
-            CompetitionView()
-        case .broadcast:
-            BroadcastView()
-        case .analytics:
-            AnalyticsView()
-        case .server:
-            ServerControlView()
-        case .settings:
-            SettingsView()
+        case .rigs:        RigGridView()
+        case .raceControl: RaceControlView()
+        case .raceWall:    RaceWallView()
+        case .competition: CompetitionView()
+        case .broadcast:   BroadcastView()
+        case .analytics:   AnalyticsView()
+        case .server:      ServerControlView()
+        case .settings:    SettingsView()
         }
     }
 }

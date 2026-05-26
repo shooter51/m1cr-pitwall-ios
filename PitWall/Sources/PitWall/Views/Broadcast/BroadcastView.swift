@@ -2,7 +2,7 @@ import SwiftUI
 
 struct BroadcastView: View {
     @Environment(DashboardViewModel.self) private var viewModel
-    @Environment(AuthManager.self) private var authManager
+    @Environment(MCClient.self) private var mc
 
     @State private var selectedMode: LiveState.BroadcastInfo.BroadcastMode = .auto
     @State private var selectedScene: String = "Main Feed"
@@ -11,7 +11,7 @@ struct BroadcastView: View {
     @State private var saveError: String?
 
     private var api: PitWallAPI {
-        PitWallAPI(authManager: authManager)
+        PitWallAPI(mc: mc)
     }
 
     private let availableScenes = [

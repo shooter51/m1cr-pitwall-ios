@@ -2,7 +2,7 @@ import SwiftUI
 
 struct CompetitionView: View {
     @Environment(DashboardViewModel.self) private var dashboardVM
-    @Environment(AuthManager.self) private var authManager
+    @Environment(MCClient.self) private var mc
     @State private var competitionVM: CompetitionViewModel?
     @State private var showCreateForm = false
 
@@ -62,7 +62,7 @@ struct CompetitionView: View {
             }
         }
         .task {
-            let vm = CompetitionViewModel(authManager: authManager)
+            let vm = CompetitionViewModel(mc: mc)
             competitionVM = vm
             await vm.loadCompetitions()
         }
