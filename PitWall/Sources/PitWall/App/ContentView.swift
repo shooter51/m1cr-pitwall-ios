@@ -28,7 +28,7 @@ struct ContentView: View {
     @Environment(BackendStore.self) private var store
     @Environment(MCClient.self) private var mc
     @Environment(DashboardViewModel.self) private var viewModel
-    @State private var selectedTab: Tab = .rigs
+    @State private var selectedTab: Tab? = .rigs
     @State private var showAISheet = false
 
     var body: some View {
@@ -65,7 +65,7 @@ struct ContentView: View {
                 }
             }
         } detail: {
-            detailView(for: selectedTab)
+            detailView(for: selectedTab ?? .rigs)
         }
         .sheet(isPresented: $showAISheet) {
             AIOperatorView()
