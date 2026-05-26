@@ -60,7 +60,7 @@ struct ContentView: View {
             detailView(for: selectedTab)
         }
         .sheet(isPresented: $showAISheet) {
-            Text("AI Operator — Coming in Phase 5")
+            AIOperatorView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(PW.panel)
         }
@@ -74,20 +74,11 @@ struct ContentView: View {
         case .raceControl:
             RaceControlView()
         case .competition:
-            Text("Competition — Coming in Phase 4")
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(PW.carbon)
-                .foregroundStyle(PW.silver)
+            CompetitionView()
         case .broadcast:
-            Text("Broadcast — Coming in Phase 4")
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(PW.carbon)
-                .foregroundStyle(PW.silver)
+            BroadcastView()
         case .analytics:
-            Text("Analytics — Coming in Phase 6")
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(PW.carbon)
-                .foregroundStyle(PW.silver)
+            AnalyticsView()
         case .server:
             ServerControlView()
         case .settings:
