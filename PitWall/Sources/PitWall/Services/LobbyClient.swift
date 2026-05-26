@@ -99,7 +99,7 @@ actor LobbyClient {
                 request.setValue(key, forHTTPHeaderField: "X-PitWall-Key")
 
                 do {
-                    let (bytes, response) = try await URLSession.shared.bytes(for: request)
+                    let (bytes, response) = try await PinnedURLSession.shared.bytes(for: request)
                     guard let http = response as? HTTPURLResponse,
                           (200..<300).contains(http.statusCode) else {
                         continuation.finish(throwing: LobbyError.server(
@@ -109,18 +109,19 @@ actor LobbyClient {
                     }
 
                     var eventType = ""
-                    var dataBuf = ""
+                    var dataLines: [String] = []
                     for try await line in bytes.lines {
                         if line.hasPrefix("event:") {
                             eventType = String(line.dropFirst(6)).trimmingCharacters(in: .whitespaces)
                         } else if line.hasPrefix("data:") {
-                            dataBuf = String(line.dropFirst(5)).trimmingCharacters(in: .whitespaces)
+                            dataLines.append(String(line.dropFirst(5)).trimmingCharacters(in: .whitespaces))
                         } else if line.isEmpty {
+                            let dataBuf = dataLines.joined(separator: "\n")
                             if !eventType.isEmpty, let payload = dataBuf.data(using: .utf8) {
                                 continuation.yield(LobbyEvent(type: eventType, payload: payload))
                             }
                             eventType = ""
-                            dataBuf = ""
+                            dataLines = []
                         }
                     }
                     continuation.finish()
@@ -134,7 +135,8 @@ actor LobbyClient {
     // MARK: - private
 
     private func buildRequest(_ method: String, _ path: String) async throws -> URLRequest {
-        let url = await mc.lobbyURL.appendingPathComponent(path)
+        let trimmedPath = path.hasPrefix("/") ? String(path.dropFirst()) : path
+        let url = await mc.lobbyURL.appendingPathComponent(trimmedPath)
         var req = URLRequest(url: url)
         req.httpMethod = method
         req.setValue(await mc.clientKey, forHTTPHeaderField: "X-PitWall-Key")
@@ -145,7 +147,7 @@ actor LobbyClient {
     private func executeRaw(_ request: URLRequest) async throws -> Data {
         let (data, response): (Data, URLResponse)
         do {
-            (data, response) = try await URLSession.shared.data(for: request)
+            (data, response) = try await PinnedURLSession.shared.data(for: request)
         } catch {
             throw LobbyError.network(error)
         }

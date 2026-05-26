@@ -51,7 +51,7 @@ struct RaceControlView: View {
     private func postToParent() async {
         guard let base = mc.attachedMCURL, let state = viewModel.liveState else { return }
         posting = true; defer { posting = false }
-        var req = URLRequest(url: base.appendingPathComponent("/api/postings"))
+        var req = URLRequest(url: base.appendingPathComponent("api/postings"))
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         mc.authorize(&req)
@@ -243,10 +243,7 @@ struct RaceControlView: View {
     }
 
     private func formatLap(_ ms: Int?) -> String {
-        guard let ms else { return "--:--.---" }
-        let m = ms / 60_000
-        let s = Double(ms % 60_000) / 1000.0
-        return String(format: "%d:%06.3f", m, s)
+        LapTimeFormatter.format(ms)
     }
 
     private func formatGap(_ ms: Int?) -> String {

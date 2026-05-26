@@ -15,7 +15,7 @@ settings:
   base:
     SWIFT_VERSION: "5.9"
     DEVELOPMENT_TEAM: ""
-    CODE_SIGNING_ALLOWED: NO
+    CODE_SIGNING_ALLOWED: YES  # Set DEVELOPMENT_TEAM in Secrets.xcconfig for device builds
     CODE_SIGN_IDENTITY: ""
     SWIFT_UPCOMING_FEATURE_STRICT_CONCURRENCY: YES
 targets:

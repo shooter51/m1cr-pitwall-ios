@@ -7,9 +7,13 @@ struct AnalyticsView: View {
     @State private var laps: [LapTime] = []
     @State private var isLoading = false
     @State private var error: String?
+    @State private var api: PitWallAPI?
 
-    private var api: PitWallAPI {
-        PitWallAPI(mc: mc)
+    private func resolvedAPI() -> PitWallAPI {
+        if let api { return api }
+        let newAPI = PitWallAPI(mc: mc)
+        api = newAPI
+        return newAPI
     }
 
     var body: some View {
@@ -52,7 +56,9 @@ struct AnalyticsView: View {
     // MARK: - KPI Hero Strip
 
     private var kpiHeroStrip: some View {
-        let revenue = Double(sessions.filter { $0.status == .completed }.count) * 35.0
+        // TODO: Fetch session price from backend config instead of hardcoding $35.
+        let sessionPrice = 35.0
+        let revenue = Double(sessions.filter { $0.status == .completed }.count) * sessionPrice
         let driverCount = Set(sessions.map { $0.driverName }).count
         let avgSession = sessions.isEmpty ? 0 :
             sessions.compactMap { $0.durationMinutes }.reduce(0, +) / max(1, sessions.compactMap { $0.durationMinutes }.count)
@@ -62,7 +68,8 @@ struct AnalyticsView: View {
 
         return ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: PW.gridGap) {
-                KPIHeroCard(label: "REVENUE", value: String(format: "£%.0f", revenue), accent: PW.ok)
+                // TODO: Fetch session price from backend config instead of hardcoding $35.
+                KPIHeroCard(label: "REVENUE", value: String(format: "$%.0f", revenue), accent: PW.ok)
                 KPIHeroCard(label: "DRIVERS", value: "\(driverCount)", accent: PW.silver)
                 KPIHeroCard(label: "LAPS", value: "\(laps.count)", accent: PW.info)
                 KPIHeroCard(label: "AVG SESSION", value: "\(avgSession)m", accent: PW.silver)
@@ -366,10 +373,13 @@ struct AnalyticsView: View {
         error = nil
 
         do {
-            async let fetchedSessions = api.sessions(filter: SessionFilter(limit: 100))
-            async let fetchedLaps = api.laps(filter: LapFilter(period: "today", limit: 500))
-            sessions = try await fetchedSessions
-            laps = try await fetchedLaps
+            let currentAPI = resolvedAPI()
+            async let fetchedSessions = currentAPI.sessions(filter: SessionFilter(limit: 100))
+            async let fetchedLaps = currentAPI.laps(filter: LapFilter(period: "today", limit: 500))
+            let (s, l) = try await (fetchedSessions, fetchedLaps)
+            guard !Task.isCancelled else { return }
+            sessions = s
+            laps = l
         } catch let e as APIError {
             switch e {
             case .notAttached:

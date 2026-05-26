@@ -13,23 +13,23 @@ struct LobbyNode: Codable, Equatable, Identifiable, Hashable, Sendable {
     let `operator`: OperatorInfo?
     let live: LiveCounts
 
-    enum Kind: String, Codable {
+    enum Kind: String, Codable, Sendable {
         case location, org
     }
 
-    struct MCInfo: Codable, Equatable, Hashable {
+    struct MCInfo: Codable, Equatable, Hashable, Sendable {
         let url: String?
         let isRunning: Bool
         let startedAt: String?
     }
 
-    struct OperatorInfo: Codable, Equatable, Hashable {
+    struct OperatorInfo: Codable, Equatable, Hashable, Sendable {
         let deviceId: String
         let display: String?
         let attachedAt: String
     }
 
-    struct LiveCounts: Codable, Equatable, Hashable {
+    struct LiveCounts: Codable, Equatable, Hashable, Sendable {
         let activeSessions: Int
         let activeRaces: Int
         let activePostings: Int

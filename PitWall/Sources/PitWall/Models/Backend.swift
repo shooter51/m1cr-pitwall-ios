@@ -6,7 +6,7 @@ import Foundation
 /// Operators may have several saved Backends — e.g. one for their own family
 /// network plus the M1 Circuit default. The current Backend is what `MCClient`
 /// uses for all HTTP/SSE traffic.
-struct Backend: Codable, Identifiable, Hashable {
+struct Backend: Codable, Identifiable, Hashable, Sendable {
     let id: UUID
     var name: String
     var lobbyURL: URL

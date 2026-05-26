@@ -33,35 +33,25 @@ struct PitWallAPITests {
     // MARK: - Public endpoints
 
     @MainActor
-    @Test("GET /api/pitwall/laps returns array (may require MC attachment)")
+    @Test("GET /api/pitwall/laps returns array (may require MC attachment)", .disabled("live network test — run manually"))
     func fetchLaps() async throws {
         let mc = makeAttachedMC()
         let api = PitWallAPI(mc: mc)
-
-        do {
-            let laps = try await api.laps(filter: LapFilter(limit: 10))
-            #expect(laps.count >= 0)
-            for lap in laps {
-                #expect(!lap.id.isEmpty)
-                #expect(lap.lapTimeMs > 0)
-            }
-        } catch {
-            // Network errors are acceptable in CI
+        let laps = try await api.laps(filter: LapFilter(limit: 10))
+        #expect(laps.count >= 0)
+        for lap in laps {
+            #expect(!lap.id.isEmpty)
+            #expect(lap.lapTimeMs > 0)
         }
     }
 
     @MainActor
-    @Test("GET /api/pitwall/competitions returns array")
+    @Test("GET /api/pitwall/competitions returns array", .disabled("live network test — run manually"))
     func fetchCompetitions() async throws {
         let mc = makeAttachedMC()
         let api = PitWallAPI(mc: mc)
-
-        do {
-            let competitions = try await api.competitions()
-            #expect(competitions.count >= 0)
-        } catch {
-            // Network errors acceptable in CI
-        }
+        let competitions = try await api.competitions()
+        #expect(competitions.count >= 0)
     }
 
     @Test("LapFilter builds correct query items")

@@ -180,72 +180,47 @@ struct LapTimeTests {
     // MARK: - API integration
 
     @MainActor
-    @Test("GET /api/pitwall/laps with period filter")
+    @Test("GET /api/pitwall/laps with period filter", .disabled("live network test — run manually"))
     func fetchLapsWithPeriodFilter() async throws {
         let mc = makeAttachedMC()
         let api = PitWallAPI(mc: mc)
-
-        do {
-            let laps = try await api.laps(filter: LapFilter(period: "today", limit: 10))
-            #expect(laps.count >= 0)
-        } catch {
-            // Network errors acceptable in CI
-        }
+        let laps = try await api.laps(filter: LapFilter(period: "today", limit: 10))
+        #expect(laps.count >= 0)
     }
 
     @MainActor
-    @Test("GET /api/pitwall/laps with track filter")
+    @Test("GET /api/pitwall/laps with track filter", .disabled("live network test — run manually"))
     func fetchLapsWithTrackFilter() async throws {
         let mc = makeAttachedMC()
         let api = PitWallAPI(mc: mc)
-
-        do {
-            let laps = try await api.laps(filter: LapFilter(track: "brands-hatch", limit: 5))
-            #expect(laps.count >= 0)
-        } catch {
-            // Network errors acceptable in CI
-        }
+        let laps = try await api.laps(filter: LapFilter(track: "brands-hatch", limit: 5))
+        #expect(laps.count >= 0)
     }
 
     @MainActor
-    @Test("GET /api/pitwall/laps with vehicle class filter")
+    @Test("GET /api/pitwall/laps with vehicle class filter", .disabled("live network test — run manually"))
     func fetchLapsWithVehicleClassFilter() async throws {
         let mc = makeAttachedMC()
         let api = PitWallAPI(mc: mc)
-
-        do {
-            let laps = try await api.laps(filter: LapFilter(vehicleClass: "GT3", limit: 5))
-            #expect(laps.count >= 0)
-        } catch {
-            // Network errors acceptable in CI
-        }
+        let laps = try await api.laps(filter: LapFilter(vehicleClass: "GT3", limit: 5))
+        #expect(laps.count >= 0)
     }
 
     @MainActor
-    @Test("GET /api/pitwall/laps with driver name filter")
+    @Test("GET /api/pitwall/laps with driver name filter", .disabled("live network test — run manually"))
     func fetchLapsByDriver() async throws {
         let mc = makeAttachedMC()
         let api = PitWallAPI(mc: mc)
-
-        do {
-            let laps = try await api.laps(filter: LapFilter(driverName: "Tom", limit: 10))
-            #expect(laps.count >= 0)
-        } catch {
-            // Network errors acceptable in CI
-        }
+        let laps = try await api.laps(filter: LapFilter(driverName: "Tom", limit: 10))
+        #expect(laps.count >= 0)
     }
 
     @MainActor
-    @Test("GET /api/pitwall/laps with no filter")
+    @Test("GET /api/pitwall/laps with no filter", .disabled("live network test — run manually"))
     func fetchAllLaps() async throws {
         let mc = makeAttachedMC()
         let api = PitWallAPI(mc: mc)
-
-        do {
-            let laps = try await api.laps()
-            #expect(laps.count >= 0)
-        } catch {
-            // Network errors acceptable in CI
-        }
+        let laps = try await api.laps()
+        #expect(laps.count >= 0)
     }
 }

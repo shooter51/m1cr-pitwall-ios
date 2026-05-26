@@ -53,6 +53,11 @@ final class LobbyViewModel {
             }
         }
 
+        // Re-fetch nodes to get the authoritative post-spawn state, then attach.
+        // Doing this before the attach call avoids a race where the cached nodes
+        // array may not yet reflect the spawned container's URL.
+        await load()
+
         do {
             try await lobby.attach(nodeId: node.id)
         } catch {
@@ -60,7 +65,7 @@ final class LobbyViewModel {
             return
         }
 
-        // Pull the refreshed payload so we have an accurate mc.url for the attach.
+        // Use the freshly fetched node, falling back to the original if not found.
         if let refreshed = nodes.first(where: { $0.id == node.id }) {
             mc.attach(to: refreshed)
         } else {

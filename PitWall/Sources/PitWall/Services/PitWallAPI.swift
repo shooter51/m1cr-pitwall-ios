@@ -88,6 +88,22 @@ actor PitWallAPI {
         try await post("/api/pitwall/competitions", body: params.body)
     }
 
+    // MARK: - Race Wall
+
+    func raceWallPostings() async throws -> [RacePosting] {
+        struct Wrapper: Decodable { let postings: [RacePosting] }
+        let w: Wrapper = try await get("/api/race-wall")
+        return w.postings
+    }
+
+    func joinPosting(id: String, driverName: String) async throws {
+        let _: [String: Bool] = try await post("/api/race-wall/\(id)/join", body: ["driver_name": driverName])
+    }
+
+    func pushPostingToDisplay(id: String, displayId: String) async throws {
+        let _: [String: Bool] = try await post("/api/race-wall/\(id)/display", body: ["display_id": displayId])
+    }
+
     // MARK: - Server Control
 
     func serverStatus() async throws -> ServerStatus {
@@ -107,7 +123,7 @@ actor PitWallAPI {
                     guard let base = await mc.attachedMCURL else {
                         throw APIError.notAttached
                     }
-                    let url = base.appendingPathComponent("/api/pitwall/ai")
+                    let url = base.appendingPathComponent("api/pitwall/ai")
                     var request = URLRequest(url: url)
                     request.httpMethod = "POST"
                     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -119,7 +135,7 @@ actor PitWallAPI {
                     let bodyObj = try JSONSerialization.jsonObject(with: messagesData)
                     request.httpBody = try JSONSerialization.data(withJSONObject: ["messages": bodyObj])
 
-                    let (bytes, response) = try await URLSession.shared.bytes(for: request)
+                    let (bytes, response) = try await PinnedURLSession.shared.bytes(for: request)
 
                     guard let http = response as? HTTPURLResponse,
                           (200..<300).contains(http.statusCode) else {
@@ -130,13 +146,16 @@ actor PitWallAPI {
                     }
 
                     var eventType = ""
-                    var dataBuffer = ""
+                    var dataLines: [String] = []
 
                     for try await line in bytes.lines {
                         if line.hasPrefix("event:") {
                             eventType = String(line.dropFirst(6)).trimmingCharacters(in: .whitespaces)
                         } else if line.hasPrefix("data:") {
-                            dataBuffer = String(line.dropFirst(5)).trimmingCharacters(in: .whitespaces)
+                            dataLines.append(String(line.dropFirst(5)).trimmingCharacters(in: .whitespaces))
+                        } else if line.isEmpty {
+                            // Dispatch on blank line; join accumulated data lines.
+                            let dataBuffer = dataLines.joined(separator: "\n")
                             if !dataBuffer.isEmpty, let chunkData = dataBuffer.data(using: .utf8) {
                                 if let json = try? JSONSerialization.jsonObject(with: chunkData) as? [String: Any] {
                                     let chunk = AIChunk(
@@ -149,7 +168,7 @@ actor PitWallAPI {
                                     if eventType == "done" { break }
                                 }
                             }
-                            dataBuffer = ""
+                            dataLines = []
                             eventType = ""
                         }
                     }
@@ -188,7 +207,8 @@ actor PitWallAPI {
     ) async throws -> URLRequest {
         guard let base = await mc.attachedMCURL else { throw APIError.notAttached }
 
-        var components = URLComponents(url: base.appendingPathComponent(path), resolvingAgainstBaseURL: false)
+        let trimmedPath = path.hasPrefix("/") ? String(path.dropFirst()) : path
+        var components = URLComponents(url: base.appendingPathComponent(trimmedPath), resolvingAgainstBaseURL: false)
         if let items = queryItems, !items.isEmpty {
             components?.queryItems = items
         }
@@ -206,7 +226,7 @@ actor PitWallAPI {
     private func execute<T: Decodable>(_ request: URLRequest) async throws -> T {
         let (data, response): (Data, URLResponse)
         do {
-            (data, response) = try await URLSession.shared.data(for: request)
+            (data, response) = try await PinnedURLSession.shared.data(for: request)
         } catch {
             throw APIError.networkError(error)
         }

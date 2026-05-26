@@ -2,9 +2,8 @@ import Foundation
 import Observation
 
 /// Persists the set of known backends + which one is current.
-/// Storage is UserDefaults (small JSON blob); the client key lives alongside
-/// because this is a closed-loop family network and the device is already trusted
-/// to hold it (matches the shared-key threat model from the PRD).
+/// Metadata (name, URL, etc.) is stored in UserDefaults; client keys are stored
+/// in the Keychain under "com.m1circuit.pitwall" with account "<uuid>.clientKey".
 @MainActor
 @Observable
 final class BackendStore {
@@ -26,15 +25,24 @@ final class BackendStore {
         if stored.isEmpty, let seed = defaultSeed {
             self.backends = [seed]
             self.currentId = seed.id
-            persist()
+            persist([seed])
         } else {
-            self.backends = stored
+            // Rehydrate clientKeys from Keychain.
+            let rehydrated = stored.map { backend -> Backend in
+                if let key = KeychainHelper.read(account: "\(backend.id.uuidString).clientKey") {
+                    var copy = backend
+                    copy.clientKey = key
+                    return copy
+                }
+                return backend
+            }
+            self.backends = rehydrated
             if let currentRaw = defaults.string(forKey: currentKey),
                let uuid = UUID(uuidString: currentRaw),
-               stored.contains(where: { $0.id == uuid }) {
+               rehydrated.contains(where: { $0.id == uuid }) {
                 self.currentId = uuid
             } else {
-                self.currentId = stored.first?.id
+                self.currentId = rehydrated.first?.id
             }
         }
     }
@@ -46,19 +54,20 @@ final class BackendStore {
 
     func add(_ backend: Backend) {
         backends.append(backend)
-        persist()
+        persist(backends)
     }
 
     func update(_ backend: Backend) {
         guard let idx = backends.firstIndex(where: { $0.id == backend.id }) else { return }
         backends[idx] = backend
-        persist()
+        persist(backends)
     }
 
     func remove(id: UUID) {
         backends.removeAll { $0.id == id }
+        KeychainHelper.delete(account: "\(id.uuidString).clientKey")
         if currentId == id { currentId = backends.first?.id }
-        persist()
+        persist(backends)
     }
 
     func setCurrent(_ id: UUID) {
@@ -67,11 +76,24 @@ final class BackendStore {
         if let idx = backends.firstIndex(where: { $0.id == id }) {
             backends[idx].lastConnectedAt = Date()
         }
-        persist()
+        persist(backends)
     }
 
-    private func persist() {
-        if let data = try? JSONEncoder().encode(backends) {
+    // MARK: - Private
+
+    private func persist(_ currentBackends: [Backend]) {
+        // Store clientKeys in Keychain; strip them from UserDefaults data.
+        for backend in currentBackends {
+            KeychainHelper.write(backend.clientKey, account: "\(backend.id.uuidString).clientKey")
+        }
+
+        // Encode backends with empty clientKey so plaintext key never hits UserDefaults.
+        let sanitised = currentBackends.map { b -> Backend in
+            var copy = b
+            copy.clientKey = ""
+            return copy
+        }
+        if let data = try? JSONEncoder().encode(sanitised) {
             defaults.set(data, forKey: backendsKey)
         }
         if let id = currentId {

@@ -117,22 +117,18 @@ struct CompetitionViewModelTests {
     // MARK: - API integration
 
     @MainActor
-    @Test("GET /api/pitwall/competitions returns array")
+    @Test("GET /api/pitwall/competitions returns array", .disabled("live network test — run manually"))
     func fetchCompetitionsFromAPI() async throws {
         let mc = makeAttachedMC()
         let api = PitWallAPI(mc: mc)
 
-        do {
-            let competitions = try await api.competitions()
-            #expect(competitions.count >= 0)
-            for comp in competitions {
-                #expect(!comp.id.isEmpty)
-                #expect(!comp.name.isEmpty)
-                #expect(!comp.trackId.isEmpty)
-                #expect(!comp.vehicleClass.isEmpty)
-            }
-        } catch {
-            // Network errors acceptable in CI
+        let competitions = try await api.competitions()
+        #expect(competitions.count >= 0)
+        for comp in competitions {
+            #expect(!comp.id.isEmpty)
+            #expect(!comp.name.isEmpty)
+            #expect(!comp.trackId.isEmpty)
+            #expect(!comp.vehicleClass.isEmpty)
         }
     }
 
@@ -174,7 +170,7 @@ struct CompetitionViewModelTests {
     }
 
     @MainActor
-    @Test("CompetitionViewModel loads competitions from API")
+    @Test("CompetitionViewModel loads competitions from API", .disabled("live network test — run manually"))
     func viewModelLoadCompetitions() async {
         let mc = makeAttachedMC()
         let vm = CompetitionViewModel(mc: mc)

@@ -115,6 +115,7 @@ struct DashboardViewModelTests {
 
     // MARK: - HapticsManager
 
+    @MainActor
     @Test("HapticsManager.shared is a singleton")
     func hapticsSingleton() {
         let h1 = HapticsManager.shared
@@ -123,6 +124,7 @@ struct DashboardViewModelTests {
         #expect(h1 === h2)
     }
 
+    @MainActor
     @Test("HapticsManager methods do not crash")
     func hapticsMethodsDoNotCrash() {
         let h = HapticsManager.shared

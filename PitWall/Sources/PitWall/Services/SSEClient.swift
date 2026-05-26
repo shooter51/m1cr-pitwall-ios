@@ -15,13 +15,14 @@ enum SSEError: Error, LocalizedError {
 }
 
 actor SSEClient {
-    private var task: URLSessionDataTask?
     private var isCancelled = false
+    private var currentBytesTask: URLSessionDataTask?
     private let reconnectDelayBase: Double = 1.5
     private let maxReconnectDelay: Double = 30.0
 
     func connect(url: URL, headers: [String: String]) -> AsyncStream<LiveState> {
-        AsyncStream { continuation in
+        isCancelled = false
+        return AsyncStream { continuation in
             Task {
                 await self.startStreaming(url: url, headers: headers, continuation: continuation)
             }
@@ -34,8 +35,8 @@ actor SSEClient {
 
     func disconnect() {
         isCancelled = true
-        task?.cancel()
-        task = nil
+        currentBytesTask?.cancel()
+        currentBytesTask = nil
     }
 
     // MARK: - Private
@@ -74,7 +75,9 @@ actor SSEClient {
             request.setValue(value, forHTTPHeaderField: key)
         }
 
-        let (bytes, response) = try await URLSession.shared.bytes(for: request)
+        let (bytes, response) = try await PinnedURLSession.shared.bytes(for: request)
+        // Store the underlying task so disconnect() can cancel it.
+        currentBytesTask = bytes.task
 
         guard let http = response as? HTTPURLResponse,
               (200..<300).contains(http.statusCode) else {
@@ -82,20 +85,23 @@ actor SSEClient {
         }
 
         var eventType = ""
-        var dataBuffer = ""
+        var dataLines: [String] = []
 
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
 
         for try await line in bytes.lines {
             if isCancelled { break }
+            if Task.isCancelled { break }
 
             if line.hasPrefix("event:") {
                 eventType = String(line.dropFirst(6)).trimmingCharacters(in: .whitespaces)
             } else if line.hasPrefix("data:") {
-                dataBuffer = String(line.dropFirst(5)).trimmingCharacters(in: .whitespaces)
+                // Accumulate multi-line data fields instead of overwriting.
+                dataLines.append(String(line.dropFirst(5)).trimmingCharacters(in: .whitespaces))
             } else if line.isEmpty {
-                // Dispatch event on blank line
+                // Dispatch event on blank line; join accumulated data lines.
+                let dataBuffer = dataLines.joined(separator: "\n")
                 if !dataBuffer.isEmpty, let data = dataBuffer.data(using: .utf8) {
                     if eventType == "snapshot" || eventType.isEmpty {
                         if let state = try? decoder.decode(LiveState.self, from: data) {
@@ -104,7 +110,7 @@ actor SSEClient {
                     }
                 }
                 eventType = ""
-                dataBuffer = ""
+                dataLines = []
             }
         }
     }

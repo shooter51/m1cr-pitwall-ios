@@ -56,7 +56,7 @@ final class DashboardViewModel {
         connectionStatus = .connecting
         error = nil
 
-        let sseURL = base.appendingPathComponent("/api/pitwall/state")
+        let sseURL = base.appendingPathComponent("api/pitwall/state")
         let headers = ["X-PitWall-Key": mc.clientKey]
 
         streamTask = Task { [weak self] in
@@ -66,6 +66,7 @@ final class DashboardViewModel {
                 self.connectionStatus = .connected
             }
             for await state in stream {
+                if Task.isCancelled { break }
                 let captured = state
                 await MainActor.run {
                     self.applyStateWithHaptics(newState: captured)

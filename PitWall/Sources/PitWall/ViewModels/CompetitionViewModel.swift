@@ -1,34 +1,31 @@
 import Foundation
 import Observation
 
+@MainActor
 @Observable
 final class CompetitionViewModel {
     var competitions: [Competition] = []
     var isLoading = false
     var error: String?
 
-    private let mc: MCClient
+    private let api: PitWallAPI
 
     init(mc: MCClient) {
-        self.mc = mc
+        self.api = PitWallAPI(mc: mc)
     }
 
-    private var api: PitWallAPI {
-        PitWallAPI(mc: mc)
-    }
-
-    @MainActor
     func loadCompetitions() async {
         isLoading = true
         defer { isLoading = false }
         do {
-            competitions = try await api.competitions()
+            let result = try await api.competitions()
+            guard !Task.isCancelled else { return }
+            competitions = result
         } catch {
             self.error = error.localizedDescription
         }
     }
 
-    @MainActor
     func create(params: CreateCompetitionParams) async -> Bool {
         isLoading = true
         defer { isLoading = false }

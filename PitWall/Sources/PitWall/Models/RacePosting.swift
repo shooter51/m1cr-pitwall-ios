@@ -2,7 +2,7 @@ import Foundation
 
 /// Mirror of `race_postings` rows returned by an Org MC at `/api/race-wall`.
 /// See `m1cr-pitwall/docs/adr/0004-lobby-and-race-postings.md` §3.2.
-struct RacePosting: Codable, Equatable, Identifiable, Hashable {
+struct RacePosting: Codable, Equatable, Identifiable, Hashable, Sendable {
     let id: String
     let sourceOrgId: String
     let targetOrgId: String
@@ -22,7 +22,7 @@ struct RacePosting: Codable, Equatable, Identifiable, Hashable {
     let sourceName: String?
     let sourceSlug: String?
 
-    enum Status: String, Codable {
+    enum Status: String, Codable, Sendable {
         case live, full, ended, cancelled
     }
 }
