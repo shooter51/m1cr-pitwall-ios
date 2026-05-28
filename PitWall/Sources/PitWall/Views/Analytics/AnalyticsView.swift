@@ -9,13 +9,22 @@ struct AnalyticsView: View {
     @State private var error: String?
     @State private var api: PitWallAPI?
 
-    private let mockHours: [(h: String, n: Int, cur: Bool)] = [
-        ("09", 7, false), ("10", 9, false), ("11", 5, false),
-        ("12", 7, false), ("13", 11, false), ("14", 12, false),
-        ("15", 10, true),  ("16", 5, false), ("17", 4, false),
-        ("18", 3, false), ("19", 8, false), ("20", 9, false),
-        ("21", 7, false), ("22", 4, false),
-    ]
+    // Compute hourly distribution from real session data
+    private var hourlyData: [(h: String, n: Int, cur: Bool)] {
+        let cal = Calendar.current
+        let currentHour = cal.component(.hour, from: Date())
+        let fmt = ISO8601DateFormatter()
+        var counts = [Int: Int]()
+        for s in sessions {
+            if let d = fmt.date(from: s.startedAt) {
+                let h = cal.component(.hour, from: d)
+                counts[h, default: 0] += 1
+            }
+        }
+        return (9...22).map { h in
+            (h: String(format: "%02d", h), n: counts[h] ?? 0, cur: h == currentHour)
+        }
+    }
 
     private func resolvedAPI() -> PitWallAPI {
         if let api { return api }
@@ -70,25 +79,40 @@ struct AnalyticsView: View {
         let occupied = rigs.filter { $0.status == .occupied }.count
         let total = max(1, rigs.count)
         let utilPct = Int(Double(occupied) / Double(total) * 100)
+        let completed = sessions.filter { $0.status == .completed }.count
+        let estRevenue = completed * 35
+        let totalLaps = laps.reduce(0) { $0 + ($1.bestLapMs > 0 ? 1 : 0) }
+        let driverCount = sessions.count
 
         return PWKPIStrip(items: [
-            .init(label: "EST. REVENUE", value: "$2,845", aux: "+$420 / HR",
+            .init(label: "EST. REVENUE", value: "$\(estRevenue)",
+                  aux: "\(completed) COMPLETED",
                   accent: PW.ok, color: PW.ok),
-            .init(label: "DRIVERS", value: "47", aux: "12 RETURNING",
+            .init(label: "DRIVERS", value: "\(driverCount)",
+                  aux: nil,
                   accent: PW.silver, color: PW.silver),
-            .init(label: "LAPS", value: "612", aux: "AVG 13.0 / DRIVER",
+            .init(label: "LAPS", value: "\(totalLaps)",
+                  aux: driverCount > 0 ? "AVG \(totalLaps / max(1, driverCount)) / DRIVER" : nil,
                   accent: PW.info, color: PW.info),
-            .init(label: "AVG SESSION", value: "18m", aux: "BUDGET 20m",
+            .init(label: "AVG SESSION", value: sessions.isEmpty ? "—" : "\(avgSessionMinutes())m",
+                  aux: nil,
                   accent: PW.silver, color: PW.silver),
-            .init(label: "UTILIZATION", value: "\(utilPct)%", aux: "PEAK 15:00 · 100%",
+            .init(label: "UTILIZATION", value: "\(utilPct)%",
+                  aux: nil,
                   accent: PW.ok, color: PW.ok),
         ])
+    }
+
+    private func avgSessionMinutes() -> Int {
+        let durations = sessions.compactMap(\.durationMinutes)
+        guard !durations.isEmpty else { return 0 }
+        return durations.reduce(0, +) / durations.count
     }
 
     // MARK: - Customers / hour bar chart
 
     private var customersChart: some View {
-        let maxN = mockHours.map(\.n).max() ?? 1
+        let maxN = hourlyData.map(\.n).max() ?? 1
 
         return VStack(alignment: .leading, spacing: 0) {
             HStack {
@@ -106,7 +130,7 @@ struct AnalyticsView: View {
 
             GeometryReader { geo in
                 HStack(alignment: .bottom, spacing: 6) {
-                    ForEach(mockHours, id: \.h) { bar in
+                    ForEach(hourlyData, id: \.h) { bar in
                         let pct = CGFloat(bar.n) / CGFloat(maxN)
                         VStack(spacing: 6) {
                             Text("\(bar.n)")
@@ -150,7 +174,8 @@ struct AnalyticsView: View {
                         .tracking(1.8)
                 }
                 Spacer()
-                Text("PEAK · 12 DRIVERS @ 14:00")
+                let peakHour = hourlyData.max(by: { $0.n < $1.n })
+                Text(peakHour.map { "PEAK · \($0.n) DRIVERS @ \($0.h):00" } ?? "NO DATA")
                     .font(PW.FontStyle.mono(9, weight: .semibold))
                     .foregroundColor(PW.silver2)
                     .tracking(1.6)
@@ -168,13 +193,18 @@ struct AnalyticsView: View {
     // MARK: - Tracks top 5
 
     private var tracksSection: some View {
-        let tracks: [(name: String, pct: Int, hi: Bool)] = [
-            ("LAGUNA SECA", 38, true),
-            ("SILVERSTONE GP", 24, false),
-            ("SPA", 18, false),
-            ("NÜRBURGRING", 12, false),
-            ("MONZA", 8, false),
-        ]
+        // Derive track distribution from real leaderboard data
+        var trackCounts = [String: Int]()
+        for entry in laps {
+            trackCounts[entry.trackName.uppercased(), default: 0] += 1
+        }
+        let total = max(1, laps.count)
+        let sorted = trackCounts.sorted { $0.value > $1.value }.prefix(5)
+        let tracks: [(name: String, pct: Int, hi: Bool)] = sorted.isEmpty
+            ? [("NO DATA", 0, false)]
+            : sorted.enumerated().map { (i, kv) in
+                (name: kv.key, pct: Int(Double(kv.value) / Double(total) * 100), hi: i == 0)
+            }
 
         return VStack(alignment: .leading, spacing: 0) {
             Text("// TRACKS · TOP 5")
@@ -221,19 +251,27 @@ struct AnalyticsView: View {
 
     // MARK: - Class mix + rig health
 
+    private var classDistribution: [(name: String, pct: Int, color: Color)] {
+        var classCounts = [String: Int]()
+        for entry in laps {
+            classCounts[entry.vehicleClass.uppercased(), default: 0] += 1
+        }
+        let classTotal = max(1, laps.count)
+        let classColors: [Color] = [PW.guards, PW.info, PW.warn, PW.silverMid]
+        guard !classCounts.isEmpty else { return [("NO DATA", 0, PW.silverDim)] }
+        return classCounts.sorted { $0.value > $1.value }.prefix(4).enumerated().map { (i, kv) in
+            (name: kv.key, pct: Int(Double(kv.value) / Double(classTotal) * 100),
+             color: classColors[min(i, classColors.count - 1)])
+        }
+    }
+
     private var classMixAndHealth: some View {
-        HStack(alignment: .top, spacing: 16) {
+        let classes = classDistribution
+        return HStack(alignment: .top, spacing: 16) {
             // Class mix
             VStack(alignment: .leading, spacing: 14) {
                 Text("// CLASS MIX")
                     .pwEyebrow()
-
-                let classes: [(name: String, pct: Int, color: Color)] = [
-                    ("GT3", 58, PW.guards),
-                    ("GT4", 22, PW.info),
-                    ("FORMULA", 14, PW.warn),
-                    ("ROAD", 6, PW.silverMid),
-                ]
                 VStack(spacing: 10) {
                     ForEach(classes, id: \.name) { cls in
                         VStack(alignment: .leading, spacing: 4) {
