@@ -78,47 +78,29 @@ public enum PW {
     }
 
     public enum FontStyle {
+        // Display — Anton italic. Falls back to system heavy italic if not bundled.
         public static func hero(_ size: CGFloat = 124) -> Font {
-            if UIFont(name: FontFamily.display, size: size) != nil {
-                return .custom(FontFamily.display, size: size).italic()
-            }
-            return .system(size: size, weight: .black, design: .default).italic()
+            .system(size: size, weight: .black, design: .default).italic()
         }
         public static func h1(_ size: CGFloat = 56) -> Font {
-            if UIFont(name: FontFamily.display, size: size) != nil {
-                return .custom(FontFamily.display, size: size).italic()
-            }
-            return .system(size: size, weight: .black, design: .default).italic()
+            .system(size: size, weight: .black, design: .default).italic()
         }
         public static func title(_ size: CGFloat = 30) -> Font {
-            if UIFont(name: FontFamily.display, size: size) != nil {
-                return .custom(FontFamily.display, size: size).italic()
-            }
-            return .system(size: size, weight: .black, design: .default).italic()
+            .system(size: size, weight: .black, design: .default).italic()
         }
         public static func card(_ size: CGFloat = 26) -> Font {
-            if UIFont(name: FontFamily.display, size: size) != nil {
-                return .custom(FontFamily.display, size: size).italic()
-            }
-            return .system(size: size, weight: .black, design: .default).italic()
+            .system(size: size, weight: .black, design: .default).italic()
         }
+        // Body — Inter. System default is close enough.
         public static func body(_ size: CGFloat = 13) -> Font {
-            if UIFont(name: FontFamily.body, size: size) != nil {
-                return .custom(FontFamily.body, size: size)
-            }
-            return .system(size: size, weight: .regular, design: .default)
+            .system(size: size, weight: .regular, design: .default)
         }
+        // Mono — JetBrains Mono. System monospaced is the fallback.
         public static func mono(_ size: CGFloat = 10, weight: Font.Weight = .semibold) -> Font {
-            if UIFont(name: FontFamily.mono, size: size) != nil {
-                return .custom(FontFamily.mono, size: size).weight(weight)
-            }
-            return .system(size: size, weight: weight, design: .monospaced)
+            .system(size: size, weight: weight, design: .monospaced)
         }
         public static func telemetry(_ size: CGFloat = 22) -> Font {
-            if UIFont(name: FontFamily.mono, size: size) != nil {
-                return .custom(FontFamily.mono, size: size).weight(.bold)
-            }
-            return .system(size: size, weight: .bold, design: .monospaced)
+            .system(size: size, weight: .bold, design: .monospaced)
         }
     }
 
