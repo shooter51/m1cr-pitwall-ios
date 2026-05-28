@@ -51,12 +51,12 @@ actor LobbyClient {
     }
 
     func spawn(nodeId: String) async throws {
-        let req = try await buildRequest("POST", "/lobby/nodes/\(nodeId)/spawn")
+        let req = try await buildRequest("POST", "nodes/\(nodeId)/spawn")
         _ = try await executeRaw(req)
     }
 
     func updateNode(id: String, fields: [String: Any]) async throws -> LobbyNode {
-        var req = try await buildRequest("PATCH", "/lobby/nodes/\(id)")
+        var req = try await buildRequest("PATCH", "nodes/\(id)")
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.httpBody = try JSONSerialization.data(withJSONObject: fields)
         struct Wrap: Decodable { let node: LobbyNode }
@@ -64,17 +64,17 @@ actor LobbyClient {
     }
 
     func deleteNode(id: String) async throws {
-        let req = try await buildRequest("DELETE", "/lobby/nodes/\(id)")
+        let req = try await buildRequest("DELETE", "nodes/\(id)")
         _ = try await executeRaw(req)
     }
 
     func stop(nodeId: String) async throws {
-        let req = try await buildRequest("POST", "/lobby/nodes/\(nodeId)/stop")
+        let req = try await buildRequest("POST", "nodes/\(nodeId)/stop")
         _ = try await executeRaw(req)
     }
 
     func attach(nodeId: String) async throws {
-        var req = try await buildRequest("POST", "/lobby/nodes/\(nodeId)/attach")
+        var req = try await buildRequest("POST", "nodes/\(nodeId)/attach")
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         let body = AttachBody(deviceId: mc.deviceId, display: nil)
         req.httpBody = try encoder.encode(body)
@@ -82,7 +82,7 @@ actor LobbyClient {
     }
 
     func detach(nodeId: String) async throws {
-        var req = try await buildRequest("POST", "/lobby/nodes/\(nodeId)/detach")
+        var req = try await buildRequest("POST", "nodes/\(nodeId)/detach")
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.httpBody = try JSONSerialization.data(withJSONObject: ["device_id": mc.deviceId])
         _ = try await executeRaw(req)

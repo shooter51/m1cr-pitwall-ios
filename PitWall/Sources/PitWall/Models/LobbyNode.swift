@@ -13,6 +13,19 @@ struct LobbyNode: Codable, Equatable, Identifiable, Hashable, Sendable {
     let `operator`: OperatorInfo?
     let live: LiveCounts
 
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        parentId = try c.decodeIfPresent(String.self, forKey: .parentId)
+        name = try c.decode(String.self, forKey: .name)
+        slug = try c.decode(String.self, forKey: .slug)
+        kind = try c.decode(Kind.self, forKey: .kind)
+        metadata = try c.decodeIfPresent([String: AnyJSON].self, forKey: .metadata) ?? [:]
+        mc = try c.decodeIfPresent(MCInfo.self, forKey: .mc) ?? MCInfo(url: nil, isRunning: false, startedAt: nil)
+        `operator` = try c.decodeIfPresent(OperatorInfo.self, forKey: .operator)
+        live = try c.decodeIfPresent(LiveCounts.self, forKey: .live) ?? LiveCounts(activeSessions: 0, activeRaces: 0, activePostings: 0)
+    }
+
     enum Kind: String, Codable, Sendable {
         case location, org
     }

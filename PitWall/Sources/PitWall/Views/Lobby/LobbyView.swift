@@ -69,7 +69,7 @@ struct LobbyView: View {
             Text("PitWall")
                 .font(.system(size: 32, weight: .bold))
                 .foregroundStyle(PW.silver)
-            Text("Pick a Mobile Command to operate.")
+            Text("Select a location to manage.")
                 .font(.system(size: 14))
                 .foregroundStyle(PW.silverMid)
         }
@@ -83,7 +83,7 @@ struct LobbyView: View {
             VStack(spacing: 8) {
                 Image(systemName: "plus.circle")
                     .font(.system(size: 36, weight: .semibold))
-                Text("New Mobile Command")
+                Text("Add Location")
                     .font(.system(size: 14, weight: .semibold))
             }
             .frame(maxWidth: .infinity, minHeight: 132)
@@ -129,28 +129,34 @@ private struct NewNodeSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Identity") {
-                    TextField("Name (e.g. Paddock-A)", text: $name)
+                Section {
+                    TextField("Name (e.g. Tom's House)", text: $name)
                         .onChange(of: name) { _, newValue in
                             if slug.isEmpty || slug == kebab(name) {
                                 slug = kebab(newValue)
                             }
                         }
-                    TextField("Slug", text: $slug)
+                    TextField("Short ID (auto-generated)", text: $slug)
                         .autocorrectionDisabled(true)
+                        .foregroundStyle(PW.silverDim)
                 }
-                Section("Kind") {
-                    Picker("Kind", selection: $kind) {
-                        Text("Location (runs the game)").tag(LobbyNode.Kind.location)
-                        Text("Org (orchestrator)").tag(LobbyNode.Kind.org)
+                Section("Type") {
+                    Picker("Type", selection: $kind) {
+                        Text("Location").tag(LobbyNode.Kind.location)
+                        Text("Organization").tag(LobbyNode.Kind.org)
                     }
                     .pickerStyle(.segmented)
+                    Text(kind == .location
+                         ? "A location has simulators and runs races."
+                         : "An organization groups multiple locations together.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
                 if let error {
                     Text(error).foregroundStyle(.red).font(.system(size: 12))
                 }
             }
-            .navigationTitle("New Mobile Command")
+            .navigationTitle("Add Location")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
