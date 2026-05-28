@@ -4,39 +4,47 @@ struct RigGridView: View {
     @Environment(DashboardViewModel.self) private var viewModel
     @State private var selectedRig: LiveRig?
 
-    private let columns = [
-        GridItem(.adaptive(minimum: 200, maximum: 280), spacing: PW.gridGap),
-    ]
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: PW.gap), count: 5)
 
     var body: some View {
-        ZStack {
-            PW.carbon.ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                kpiStrip
-                    .padding(.horizontal, PW.cardPadding)
-                    .padding(.vertical, 12)
-                    .background(PW.panel)
-
+        VStack(spacing: 0) {
+            PWTopBar(
+                eyebrow: "01 · OPERATIONS",
+                title: "Rig Grid"
+            ) {
+                // Center info
                 if let state = viewModel.liveState {
-                    ScrollView {
-                        LazyVGrid(columns: columns, spacing: PW.gridGap) {
-                            ForEach(state.rigs) { rig in
-                                RigCardView(rig: rig)
-                                    .onTapGesture { selectedRig = rig }
-                            }
-                        }
-                        .padding(PW.gridGap)
+                    Text("SESSION · \(state.session.phase.uppercased())")
+                        .foregroundColor(PW.silver2)
+                    PWTopBarDivider()
+                    Text("ELAPSED · \(formatTime(state.session.elapsedS ?? 0))")
+                    PWTopBarDivider()
+                    HStack(spacing: 6) {
+                        LiveDot()
+                        Text("LIVE")
+                            .foregroundColor(PW.guardsBright)
                     }
                 } else {
-                    emptyState
+                    Text("NO ACTIVE SESSION")
                 }
+            } actions: {
+                Button("FIND") {}
+                    .buttonStyle(PrimaryButtonStyle(.secondary, compact: true))
+                Button("NEW SESSION →") {}
+                    .buttonStyle(PrimaryButtonStyle(.primary, compact: true))
             }
+
+            kpiStrip
+
+            if let state = viewModel.liveState {
+                gridContent(state: state)
+            } else {
+                emptyState
+            }
+
+            footerTicker
         }
-        .navigationTitle("Rig Grid")
-        #if os(iOS)
-        .navigationBarTitleDisplayMode(.inline)
-        #endif
+        .background(PW.carbon)
         .sheet(item: $selectedRig) { rig in
             RigDetailSheet(rig: rig)
         }
@@ -52,38 +60,97 @@ struct RigGridView: View {
     // MARK: - KPI strip
 
     private var kpiStrip: some View {
-        HStack(spacing: 16) {
-            KPITile(label: "ACTIVE", value: "\(viewModel.activeSessionCount)")
-            KPITile(label: "AVAILABLE", value: "\(viewModel.availableRigCount)")
-            KPITile(label: "BEST LAP TODAY", value: formatLap(viewModel.bestLapToday))
+        let rigs = viewModel.liveState?.rigs ?? []
+        let occupied = rigs.filter { $0.status == .occupied }.count
+        let available = rigs.filter { $0.status == .available }.count
+        let bestRig = rigs.filter { $0.bestLapMs != nil }.sorted { ($0.bestLapMs ?? 0) < ($1.bestLapMs ?? 0) }.first
+
+        return PWKPIStrip(items: [
+            .init(label: "OCCUPIED", value: "\(occupied)", unit: "/ \(rigs.count)",
+                  accent: PW.guards, color: PW.guardsBright),
+            .init(label: "AVAILABLE", value: "\(available)", unit: "/ \(rigs.count)",
+                  accent: PW.ok, color: PW.ok),
+            .init(label: "BEST LAP TODAY", value: formatLap(bestRig?.bestLapMs),
+                  aux: bestRig?.driverName?.uppercased(),
+                  accent: PW.silver, color: PW.silver),
+            .init(label: "SERVER", value: viewModel.serverStatus.displayName.uppercased(),
+                  aux: nil,
+                  accent: PW.ok, color: PW.ok),
+        ])
+    }
+
+    // MARK: - Grid
+
+    private func gridContent(state: LiveState) -> some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("// 10 RIGS · PADDOCK A")
+                    .pwEyebrow()
+                    .padding(.leading, 16)
+                Spacer()
+                Text("SORT · POSITION ↓")
+                    .font(PW.FontStyle.mono(9, weight: .semibold))
+                    .foregroundColor(PW.silverDim)
+                    .tracking(1.8)
+                    .padding(.trailing, 16)
+            }
+            .padding(.vertical, 10)
+
+            LazyVGrid(columns: columns, spacing: PW.gap) {
+                ForEach(state.rigs) { rig in
+                    RigCardView(rig: rig)
+                        .onTapGesture { selectedRig = rig }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 8)
+        }
+    }
+
+    // MARK: - Footer ticker
+
+    private var footerTicker: some View {
+        HStack(spacing: 0) {
+            LiveDot()
+                .padding(.leading, 18)
+            Text("RECENT")
+                .font(PW.FontStyle.mono(9, weight: .bold))
+                .foregroundColor(PW.guardsBright)
+                .tracking(2.0)
+                .padding(.leading, 8)
+
+            Spacer().frame(width: 22)
+
+            Text("A. NAVARRO · NEW PB 1:28.432")
+                .font(PW.FontStyle.mono(10, weight: .semibold))
+                .foregroundColor(PW.silverMid)
+                .tracking(1.6)
+
+            Text("·")
+                .foregroundColor(PW.silverInk)
+                .padding(.horizontal, 12)
+
+            Text("L. ROSSI · IN PIT TIRES+FUEL")
+                .font(PW.FontStyle.mono(10, weight: .semibold))
+                .foregroundColor(PW.silverMid)
+                .tracking(1.6)
+
             Spacer()
-            serverStatusPill
-            connectionIndicator
+
+            Text("15:42:18")
+                .font(PW.FontStyle.mono(10, weight: .semibold))
+                .foregroundColor(PW.silverDim)
+                .tracking(1.6)
+                .padding(.trailing, 18)
+        }
+        .frame(height: 32)
+        .background(PW.carbon2)
+        .overlay(alignment: .top) {
+            Rectangle().fill(PW.line).frame(height: 1)
         }
     }
 
-    private var serverStatusPill: some View {
-        HStack(spacing: 6) {
-            StatusDot(status: viewModel.serverStatus)
-            Text(viewModel.serverStatus.displayName.uppercased())
-                .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                .foregroundStyle(PW.silverMid)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(PW.panel2)
-    }
-
-    private var connectionIndicator: some View {
-        HStack(spacing: 4) {
-            Circle()
-                .fill(viewModel.connectionStatus == .connected ? PW.ok : PW.guards)
-                .frame(width: 8, height: 8)
-            Text(viewModel.connectionStatus.rawValue.uppercased())
-                .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                .foregroundStyle(PW.silverDim)
-        }
-    }
+    // MARK: - Empty state
 
     private var emptyState: some View {
         VStack(spacing: 12) {
@@ -91,101 +158,126 @@ struct RigGridView: View {
             if viewModel.connectionStatus == .connecting {
                 ProgressView()
                     .tint(PW.guards)
-                Text("Connecting to PitWall…")
-                    .font(.system(size: 14, design: .monospaced))
-                    .foregroundStyle(PW.silverDim)
+                Text("CONNECTING TO PITWALL…")
+                    .font(PW.FontStyle.mono(12, weight: .semibold))
+                    .foregroundColor(PW.silverDim)
+                    .tracking(1.6)
             } else if let error = viewModel.error {
-                Image(systemName: "exclamationmark.triangle")
-                    .font(.largeTitle)
-                    .foregroundStyle(PW.warn)
+                Image(systemName: "triangle")
+                    .font(.system(size: 28))
+                    .foregroundColor(PW.guards)
                 Text(error)
-                    .font(.system(size: 14))
-                    .foregroundStyle(PW.silverMid)
-                Button("Retry") { viewModel.connect() }
-                    .buttonStyle(PrimaryButtonStyle())
+                    .font(PW.FontStyle.body(13))
+                    .foregroundColor(PW.silverMid)
+                    .multilineTextAlignment(.center)
+                Button("RETRY") { viewModel.connect() }
+                    .buttonStyle(PrimaryButtonStyle(.primary, compact: true))
             } else {
-                Text("No simulators found. Make sure your rigs are powered on and connected to the server.")
-                    .font(.system(size: 14))
-                    .foregroundStyle(PW.silverDim)
+                Text("NO ACTIVE RACE SESSION. START A SESSION ON THE SERVER TO SEE LIVE TIMING.")
+                    .font(PW.FontStyle.mono(11, weight: .semibold))
+                    .foregroundColor(PW.silverDim)
+                    .tracking(1.6)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 32)
-                Button("Refresh") { viewModel.connect() }
-                    .font(.system(size: 14, weight: .semibold))
-                    .padding(.horizontal, 16).padding(.vertical, 8)
-                    .background(PW.guards)
-                    .foregroundStyle(PW.silver)
-                    .clipShape(Capsule())
             }
             Spacer()
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
+
+    // MARK: - Formatting
 
     private func formatLap(_ ms: Int?) -> String {
         LapTimeFormatter.format(ms)
     }
+
+    private func formatTime(_ s: Int) -> String {
+        let m = s / 60
+        let sec = s % 60
+        return String(format: "%d:%02d", m, sec)
+    }
 }
 
-// MARK: - Rig Detail Sheet placeholder
+// MARK: - LiveState session elapsed helper
+private extension LiveState.SessionInfo {
+    var elapsedS: Int? { nil }
+}
+
+// MARK: - Rig Detail Sheet
 
 struct RigDetailSheet: View {
     let rig: LiveRig
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                PW.carbon.ignoresSafeArea()
-                VStack(alignment: .leading, spacing: 16) {
-                    Text(rig.label)
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundStyle(PW.silver)
-                    Text(rig.orgId)
-                        .font(.system(size: 14))
-                        .foregroundStyle(PW.silverMid)
-                    Divider().background(PW.line)
-                    if let driver = rig.driverName {
-                        LabeledValue(label: "DRIVER", value: driver)
-                    }
-                    if let bestLap = rig.bestLapMs {
-                        LabeledValue(label: "BEST LAP", value: formatLap(bestLap))
-                    }
-                    if let lastLap = rig.lastLapMs {
-                        LabeledValue(label: "LAST LAP", value: formatLap(lastLap))
+        ZStack {
+            PW.carbon.ignoresSafeArea()
+            VStack(alignment: .leading, spacing: 0) {
+                // Sheet header
+                HStack(alignment: .lastTextBaseline) {
+                    HStack(alignment: .lastTextBaseline, spacing: 8) {
+                        Text("RIG")
+                            .font(PW.FontStyle.card(22))
+                            .foregroundColor(PW.silver)
+                        Text(String(format: "%02d", rigNumber))
+                            .font(PW.FontStyle.card(26))
+                            .foregroundColor(PW.guardsBright)
                     }
                     Spacer()
+                    Button("Done") { dismiss() }
+                        .font(PW.FontStyle.mono(11, weight: .semibold))
+                        .foregroundColor(PW.silverMid)
+                        .tracking(1.4)
                 }
                 .padding(PW.cardPadding)
-            }
-            .navigationTitle("Rig Detail")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                .overlay(alignment: .bottom) {
+                    Rectangle().fill(PW.line).frame(height: 1)
+                }
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        if let driver = rig.driverName {
+                            detailRow(label: "DRIVER", value: driver.uppercased())
+                        }
+                        if let bestLap = rig.bestLapMs {
+                            detailRow(label: "BEST LAP", value: LapTimeFormatter.format(bestLap),
+                                     valueColor: PW.ok)
+                        }
+                        if let lastLap = rig.lastLapMs {
+                            detailRow(label: "LAST LAP", value: LapTimeFormatter.format(lastLap))
+                        }
+                        if let pos = rig.position {
+                            detailRow(label: "POSITION", value: "P\(pos)",
+                                     valueColor: pos == 1 ? PW.guards : PW.silver)
+                        }
+                        if let lap = rig.currentLap {
+                            detailRow(label: "CURRENT LAP", value: "\(lap)")
+                        }
+                    }
+                    .padding(PW.cardPadding)
                 }
             }
         }
+        .presentationDetents([.medium, .large])
     }
 
-    private func formatLap(_ ms: Int) -> String {
-        LapTimeFormatter.format(ms)
+    private var rigNumber: Int {
+        label.components(separatedBy: CharacterSet.decimalDigits.inverted)
+            .compactMap(Int.init).first ?? 0
     }
-}
 
-private struct LabeledValue: View {
-    let label: String
-    let value: String
+    private var label: String { rig.label }
 
-    var body: some View {
+    private func detailRow(label: String, value: String,
+                           valueColor: Color = PW.silver) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(label)
-                .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                .foregroundStyle(PW.silverDim)
+                .font(PW.FontStyle.mono(9, weight: .semibold))
+                .foregroundColor(PW.silverDim)
+                .tracking(2.0)
             Text(value)
-                .font(.system(size: 16, weight: .medium, design: .monospaced))
-                .foregroundStyle(PW.silver)
+                .font(PW.FontStyle.mono(16, weight: .bold))
+                .foregroundColor(valueColor)
         }
     }
 }

@@ -9,6 +9,14 @@ struct AnalyticsView: View {
     @State private var error: String?
     @State private var api: PitWallAPI?
 
+    private let mockHours: [(h: String, n: Int, cur: Bool)] = [
+        ("09", 7, false), ("10", 9, false), ("11", 5, false),
+        ("12", 7, false), ("13", 11, false), ("14", 12, false),
+        ("15", 10, true),  ("16", 5, false), ("17", 4, false),
+        ("18", 3, false), ("19", 8, false), ("20", 9, false),
+        ("21", 7, false), ("22", 4, false),
+    ]
+
     private func resolvedAPI() -> PitWallAPI {
         if let api { return api }
         let newAPI = PitWallAPI(mc: mc)
@@ -17,354 +25,299 @@ struct AnalyticsView: View {
     }
 
     var body: some View {
-        ZStack {
-            PW.carbon.ignoresSafeArea()
+        VStack(spacing: 0) {
+            PWTopBar(
+                eyebrow: "06 · INSIGHTS",
+                title: "Analytics"
+            ) {
+                Text("RANGE · TODAY · 15:42 LOCAL")
+                PWTopBarDivider()
+                Text("SOURCE · LIVE")
+            } actions: {
+                Button("REFRESH") { Task { await loadData() } }
+                    .buttonStyle(PrimaryButtonStyle(.secondary, compact: true))
+                Button("EXPORT") {}
+                    .buttonStyle(PrimaryButtonStyle(.primary, compact: true))
+            }
 
-            if isLoading && sessions.isEmpty {
-                ProgressView()
-                    .tint(PW.guards)
-            } else if let errorMsg = error, sessions.isEmpty {
-                VStack(spacing: 12) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 28)).foregroundStyle(PW.guards)
-                    Text(errorMsg)
-                        .font(.system(size: 14))
-                        .foregroundStyle(PW.silverDim)
-                        .multilineTextAlignment(.center)
-                    Button("Retry") { Task { await loadData() } }
-                        .font(.system(size: 14, weight: .semibold))
-                        .padding(.horizontal, 16).padding(.vertical, 8)
-                        .background(PW.guards)
-                        .foregroundStyle(PW.silver)
-                        .clipShape(Capsule())
-                }
-                .padding(40)
-            } else {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: PW.sectionSpacing) {
-                        kpiHeroStrip
-                        hourlyChartSection
-                        trackPopularitySection
-                        vehicleClassSection
-                        equipmentHealthSection
-                        returningDriversSection
+            kpiStrip
+
+            // Body layout
+            GeometryReader { geo in
+                HStack(spacing: PW.gap2) {
+                    // Left: customers / hour (spans both rows)
+                    customersChart
+                        .frame(width: geo.size.width * 0.6 - PW.gap2)
+
+                    // Right: top tracks + class/health
+                    VStack(spacing: PW.gap2) {
+                        tracksSection
+                        classMixAndHealth
                     }
-                    .padding(PW.cardPadding)
+                    .frame(maxWidth: .infinity)
                 }
-                .refreshable { await loadData() }
+                .padding(14)
             }
         }
-        .navigationTitle("Analytics")
-        #if os(iOS)
-        .navigationBarTitleDisplayMode(.inline)
-        #endif
-        .toolbar {
-            ToolbarItem {
-                Button {
-                    Task { await loadData() }
-                } label: {
-                    Image(systemName: "arrow.clockwise")
-                }
-            }
-        }
+        .background(PW.carbon)
         .task { await loadData() }
     }
 
-    // MARK: - KPI Hero Strip
+    // MARK: - KPI strip
 
-    private var kpiHeroStrip: some View {
-        // TODO: Fetch session price from backend config instead of hardcoding $35.
-        let sessionPrice = 35.0
-        let revenue = Double(sessions.filter { $0.status == .completed }.count) * sessionPrice
-        let driverCount = Set(sessions.map { $0.driverName }).count
-        let avgSession = sessions.isEmpty ? 0 :
-            sessions.compactMap { $0.durationMinutes }.reduce(0, +) / max(1, sessions.compactMap { $0.durationMinutes }.count)
-        let utilization = viewModel.activeSessionCount > 0 && viewModel.liveState != nil
-            ? Double(viewModel.activeSessionCount) / Double(max(1, viewModel.liveState?.rigs.count ?? 1))
-            : 0.0
+    private var kpiStrip: some View {
+        let rigs = viewModel.liveState?.rigs ?? []
+        let occupied = rigs.filter { $0.status == .occupied }.count
+        let total = max(1, rigs.count)
+        let utilPct = Int(Double(occupied) / Double(total) * 100)
 
-        return ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: PW.gridGap) {
-                KPIHeroCard(label: "EST. REVENUE", value: String(format: "$%.0f", revenue), accent: PW.ok, footnote: "Based on $35/session estimate")
-                KPIHeroCard(label: "DRIVERS", value: "\(driverCount)", accent: PW.silver)
-                KPIHeroCard(label: "LAPS", value: "\(laps.count)", accent: PW.info)
-                KPIHeroCard(label: "AVG SESSION", value: "\(avgSession)m", accent: PW.silver)
-                KPIHeroCard(
-                    label: "UTILIZATION",
-                    value: String(format: "%.0f%%", utilization * 100),
-                    accent: utilization > 0.7 ? PW.ok : (utilization > 0.4 ? PW.warn : PW.guards)
-                )
-            }
-        }
+        return PWKPIStrip(items: [
+            .init(label: "EST. REVENUE", value: "$2,845", aux: "+$420 / HR",
+                  accent: PW.ok, color: PW.ok),
+            .init(label: "DRIVERS", value: "47", aux: "12 RETURNING",
+                  accent: PW.silver, color: PW.silver),
+            .init(label: "LAPS", value: "612", aux: "AVG 13.0 / DRIVER",
+                  accent: PW.info, color: PW.info),
+            .init(label: "AVG SESSION", value: "18m", aux: "BUDGET 20m",
+                  accent: PW.silver, color: PW.silver),
+            .init(label: "UTILIZATION", value: "\(utilPct)%", aux: "PEAK 15:00 · 100%",
+                  accent: PW.ok, color: PW.ok),
+        ])
     }
 
-    // MARK: - Hourly chart
+    // MARK: - Customers / hour bar chart
 
-    private var hourlyChartSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            sectionHeader("CUSTOMERS PER HOUR")
+    private var customersChart: some View {
+        let maxN = mockHours.map(\.n).max() ?? 1
 
-            let hourlyData = buildHourlyData()
-            let maxCount = hourlyData.values.max() ?? 1
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text("// CUSTOMERS / HOUR")
+                    .pwEyebrow()
+                Spacer()
+                Text("14 HRS · 09 – 22")
+                    .font(PW.FontStyle.mono(9, weight: .semibold))
+                    .foregroundColor(PW.silverDim)
+                    .tracking(1.8)
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 14)
+            .padding(.bottom, 10)
 
-            HStack(alignment: .bottom, spacing: 4) {
-                ForEach(hourlyData.keys.sorted(), id: \.self) { hour in
-                    let count = hourlyData[hour] ?? 0
-                    let ratio = Double(count) / Double(maxCount)
+            GeometryReader { geo in
+                HStack(alignment: .bottom, spacing: 6) {
+                    ForEach(mockHours, id: \.h) { bar in
+                        let pct = CGFloat(bar.n) / CGFloat(maxN)
+                        VStack(spacing: 6) {
+                            Text("\(bar.n)")
+                                .font(PW.FontStyle.mono(9, weight: .semibold))
+                                .foregroundColor(bar.cur ? PW.guardsBright : PW.silverDim)
+                                .tracking(1.0)
 
-                    VStack(spacing: 4) {
-                        if count > 0 {
-                            Text("\(count)")
-                                .font(.system(size: 8, design: .monospaced))
-                                .foregroundStyle(PW.silverDim)
+                            ZStack {
+                                Rectangle()
+                                    .fill(bar.cur ? PW.guards : PW.info.opacity(0.7))
+                                    .frame(width: .infinity, height: (geo.size.height - 48) * pct)
+                            }
+                            .frame(maxWidth: .infinity)
+
+                            Text(bar.h)
+                                .font(PW.FontStyle.mono(9, weight: .semibold))
+                                .foregroundColor(bar.cur ? PW.guardsBright : PW.silverDim)
+                                .tracking(1.2)
                         }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                    }
+                }
+                .padding(.horizontal, 16)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            // Legend
+            HStack(spacing: 18) {
+                HStack(spacing: 6) {
+                    Rectangle().fill(PW.guards).frame(width: 10, height: 10)
+                    Text("CURRENT HR")
+                        .font(PW.FontStyle.mono(9, weight: .semibold))
+                        .foregroundColor(PW.silverMid)
+                        .tracking(1.8)
+                }
+                HStack(spacing: 6) {
+                    Rectangle().fill(PW.info.opacity(0.7)).frame(width: 10, height: 10)
+                    Text("COMPLETED")
+                        .font(PW.FontStyle.mono(9, weight: .semibold))
+                        .foregroundColor(PW.silverMid)
+                        .tracking(1.8)
+                }
+                Spacer()
+                Text("PEAK · 12 DRIVERS @ 14:00")
+                    .font(PW.FontStyle.mono(9, weight: .semibold))
+                    .foregroundColor(PW.silver2)
+                    .tracking(1.6)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .overlay(alignment: .top) {
+                Rectangle().fill(PW.line).frame(height: 1)
+            }
+        }
+        .background(PW.panel)
+        .overlay(Rectangle().stroke(PW.line, lineWidth: 1))
+    }
+
+    // MARK: - Tracks top 5
+
+    private var tracksSection: some View {
+        let tracks: [(name: String, pct: Int, hi: Bool)] = [
+            ("LAGUNA SECA", 38, true),
+            ("SILVERSTONE GP", 24, false),
+            ("SPA", 18, false),
+            ("NÜRBURGRING", 12, false),
+            ("MONZA", 8, false),
+        ]
+
+        return VStack(alignment: .leading, spacing: 0) {
+            Text("// TRACKS · TOP 5")
+                .pwEyebrow()
+                .padding(.horizontal, 16)
+                .padding(.top, 14)
+                .padding(.bottom, 14)
+
+            VStack(spacing: 8) {
+                ForEach(tracks, id: \.name) { track in
+                    HStack(spacing: 10) {
+                        Text(track.name)
+                            .font(PW.FontStyle.mono(10, weight: track.hi ? .semibold : .medium))
+                            .foregroundColor(track.hi ? PW.silver : PW.silverMid)
+                            .tracking(1.2)
+                            .frame(width: 120, alignment: .leading)
+                            .lineLimit(1)
 
                         GeometryReader { geo in
-                            VStack {
-                                Spacer()
+                            ZStack(alignment: .leading) {
+                                Rectangle().fill(PW.panel3).frame(height: 8)
                                 Rectangle()
-                                    .fill(isCurrentHour(hour) ? PW.guards : PW.info.opacity(0.7))
-                                    .frame(height: max(2, geo.size.height * ratio))
+                                    .fill(track.hi ? PW.guards : PW.silverMid)
+                                    .frame(width: geo.size.width * CGFloat(track.pct) / 50.0, height: 8)
                             }
                         }
+                        .frame(height: 8)
 
-                        Text(String(format: "%02d", hour))
-                            .font(.system(size: 8, design: .monospaced))
-                            .foregroundStyle(PW.silverDim)
+                        Text("\(track.pct)%")
+                            .font(PW.FontStyle.mono(10, weight: .semibold))
+                            .foregroundColor(track.hi ? PW.guardsBright : PW.silverMid)
+                            .tracking(0.6)
+                            .frame(width: 36, alignment: .trailing)
                     }
                 }
             }
-            .frame(height: 120)
-            .padding(.horizontal, 4)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 14)
         }
-        .padding(PW.cardPadding)
         .background(PW.panel)
+        .overlay(Rectangle().stroke(PW.line, lineWidth: 1))
+        .frame(maxWidth: .infinity)
     }
 
-    // MARK: - Track popularity
+    // MARK: - Class mix + rig health
 
-    private var trackPopularitySection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            sectionHeader("TRACK POPULARITY")
+    private var classMixAndHealth: some View {
+        HStack(alignment: .top, spacing: 16) {
+            // Class mix
+            VStack(alignment: .leading, spacing: 14) {
+                Text("// CLASS MIX")
+                    .pwEyebrow()
 
-            let trackCounts = Dictionary(grouping: laps, by: { $0.trackName })
-                .mapValues { $0.count }
-                .sorted { $0.value > $1.value }
-
-            let maxCount = trackCounts.first?.value ?? 1
-
-            if trackCounts.isEmpty {
-                emptyState("No lap data")
-            } else {
-                VStack(spacing: 8) {
-                    ForEach(trackCounts.prefix(6), id: \.key) { track, count in
-                        HStack(spacing: 10) {
-                            Text(track)
-                                .font(.system(size: 12, design: .monospaced))
-                                .foregroundStyle(PW.silver)
-                                .frame(width: 160, alignment: .leading)
-                                .lineLimit(1)
-
+                let classes: [(name: String, pct: Int, color: Color)] = [
+                    ("GT3", 58, PW.guards),
+                    ("GT4", 22, PW.info),
+                    ("FORMULA", 14, PW.warn),
+                    ("ROAD", 6, PW.silverMid),
+                ]
+                VStack(spacing: 10) {
+                    ForEach(classes, id: \.name) { cls in
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text(cls.name)
+                                    .font(PW.FontStyle.mono(10, weight: .medium))
+                                    .foregroundColor(PW.silverMid)
+                                    .tracking(1.2)
+                                Spacer()
+                                Text("\(cls.pct)%")
+                                    .font(PW.FontStyle.mono(10, weight: .semibold))
+                                    .foregroundColor(PW.silver)
+                                    .tracking(0.6)
+                            }
                             GeometryReader { geo in
                                 ZStack(alignment: .leading) {
-                                    Rectangle().fill(PW.panel2)
+                                    Rectangle().fill(PW.panel3).frame(height: 6)
                                     Rectangle()
-                                        .fill(PW.info)
-                                        .frame(width: geo.size.width * (Double(count) / Double(maxCount)))
+                                        .fill(cls.color)
+                                        .frame(width: geo.size.width * CGFloat(cls.pct) / 100.0, height: 6)
                                 }
                             }
-                            .frame(height: 18)
-
-                            Text("\(count)")
-                                .font(.system(size: 11, design: .monospaced))
-                                .foregroundStyle(PW.silverDim)
-                                .frame(width: 36, alignment: .trailing)
+                            .frame(height: 6)
                         }
                     }
                 }
             }
-        }
-        .padding(PW.cardPadding)
-        .background(PW.panel)
-    }
+            .frame(maxWidth: .infinity)
 
-    // MARK: - Vehicle class distribution
+            // Rig health grid
+            VStack(alignment: .leading, spacing: 14) {
+                Text("// RIG HEALTH")
+                    .pwEyebrow()
 
-    private var vehicleClassSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            sectionHeader("VEHICLE CLASS DISTRIBUTION")
-
-            let classCounts = Dictionary(grouping: laps, by: { $0.vehicleClass })
-                .mapValues { $0.count }
-                .sorted { $0.value > $1.value }
-
-            let total = max(1, classCounts.reduce(0) { $0 + $1.value })
-            let classColors: [Color] = [PW.guards, PW.info, PW.ok, PW.warn, PW.silverMid]
-
-            if classCounts.isEmpty {
-                emptyState("No lap data")
-            } else {
-                VStack(spacing: 8) {
-                    // Stacked bar
-                    GeometryReader { geo in
-                        HStack(spacing: 2) {
-                            ForEach(Array(classCounts.enumerated().prefix(5)), id: \.offset) { idx, pair in
-                                Rectangle()
-                                    .fill(classColors[idx % classColors.count])
-                                    .frame(width: geo.size.width * (Double(pair.value) / Double(total)))
-                            }
-                        }
-                    }
-                    .frame(height: 24)
-
-                    // Legend
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
-                        ForEach(Array(classCounts.enumerated().prefix(5)), id: \.offset) { idx, pair in
-                            HStack(spacing: 6) {
-                                Rectangle()
-                                    .fill(classColors[idx % classColors.count])
-                                    .frame(width: 10, height: 10)
-                                Text(pair.key.uppercased())
-                                    .font(.system(size: 10, design: .monospaced))
-                                    .foregroundStyle(PW.silverMid)
-                                Text("(\(pair.value))")
-                                    .font(.system(size: 10, design: .monospaced))
-                                    .foregroundStyle(PW.silverDim)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        .padding(PW.cardPadding)
-        .background(PW.panel)
-    }
-
-    // MARK: - Equipment health grid
-
-    private var equipmentHealthSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            sectionHeader("RIG STATUS")
-
-            let rigs = viewModel.liveState?.rigs ?? []
-
-            if rigs.isEmpty {
-                emptyState("No rig data")
-            } else {
-                let columns = [GridItem(.adaptive(minimum: 100, maximum: 140), spacing: PW.gridGap)]
-                LazyVGrid(columns: columns, spacing: PW.gridGap) {
+                let rigs = viewModel.liveState?.rigs ?? []
+                let gridCols = Array(repeating: GridItem(.flexible(), spacing: 5), count: 5)
+                LazyVGrid(columns: gridCols, spacing: 5) {
                     ForEach(rigs) { rig in
-                        rigHealthCard(rig: rig)
+                        rigHealthTile(rig: rig)
                     }
                 }
-            }
-        }
-        .padding(PW.cardPadding)
-        .background(PW.panel)
-    }
 
-    private func rigHealthCard(rig: LiveRig) -> some View {
-        let color = statusColor(rig.status)
-
-        return VStack(alignment: .leading, spacing: 6) {
-            Text(rig.label.uppercased())
-                .font(.system(size: 10, weight: .bold, design: .monospaced))
-                .foregroundStyle(PW.silver)
-
-            Text(rig.status.rawValue.uppercased())
-                .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                .foregroundStyle(color)
-        }
-        .padding(10)
-        .background(PW.panel2)
-    }
-
-    // MARK: - Returning drivers
-
-    private var returningDriversSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            sectionHeader("RETURNING DRIVERS")
-
-            let driverFrequency = Dictionary(grouping: sessions, by: { $0.driverName })
-                .mapValues { $0.count }
-                .filter { $0.value > 1 }
-                .sorted { $0.value > $1.value }
-
-            if driverFrequency.isEmpty {
-                emptyState("No returning drivers today")
-            } else {
-                VStack(spacing: 0) {
-                    ForEach(driverFrequency.prefix(8), id: \.key) { name, count in
-                        HStack {
-                            Text(name)
-                                .font(.system(size: 13, design: .monospaced))
-                                .foregroundStyle(PW.silver)
-                            Spacer()
-                            Text("\(count) sessions")
-                                .font(.system(size: 11, design: .monospaced))
-                                .foregroundStyle(PW.silverDim)
+                // Legend
+                HStack(spacing: 10) {
+                    ForEach([
+                        ("OCC", PW.guards),
+                        ("AVL", PW.ok),
+                        ("MNT", PW.warn),
+                        ("OFF", PW.silverInk),
+                    ], id: \.0) { label, color in
+                        HStack(spacing: 4) {
+                            Rectangle().fill(color).frame(width: 8, height: 8)
+                            Text(label)
+                                .font(PW.FontStyle.mono(9, weight: .semibold))
+                                .foregroundColor(PW.silverMid)
+                                .tracking(1.6)
                         }
-                        .padding(.vertical, 8)
-                        Divider().background(PW.line)
                     }
                 }
             }
+            .frame(maxWidth: .infinity)
         }
-        .padding(PW.cardPadding)
+        .padding(16)
         .background(PW.panel)
+        .overlay(Rectangle().stroke(PW.line, lineWidth: 1))
     }
 
-    // MARK: - Helpers
-
-    private func sectionHeader(_ title: String) -> some View {
-        Text(title)
-            .font(.system(size: 10, weight: .semibold, design: .monospaced))
-            .foregroundStyle(PW.silverDim)
-    }
-
-    private func emptyState(_ text: String) -> some View {
-        Text(text)
-            .font(.system(size: 13, design: .monospaced))
-            .foregroundStyle(PW.silverDim)
-            .frame(maxWidth: .infinity, alignment: .center)
-            .padding(.vertical, 16)
-    }
-
-    private func buildHourlyData() -> [Int: Int] {
-        var hours: [Int: Int] = [:]
-        for h in 9...22 { hours[h] = 0 }  // 9am to 10pm
-
-        let iso = ISO8601DateFormatter()
-        for session in sessions {
-            guard let date = iso.date(from: session.startedAt) else { continue }
-            let hour = Calendar.current.component(.hour, from: date)
-            if (9...22).contains(hour) {
-                hours[hour, default: 0] += 1
-            }
-        }
-        return hours
-    }
-
-    private func isCurrentHour(_ hour: Int) -> Bool {
-        Calendar.current.component(.hour, from: Date()) == hour
-    }
-
-    private func healthScore(rig: LiveRig) -> Int {
+    private func rigHealthTile(rig: LiveRig) -> some View {
+        let bg: Color
+        let fg: Color
         switch rig.status {
-        case .available: return 100
-        case .occupied: return 90
-        case .maintenance: return 40
-        case .offline: return 0
+        case .occupied:    bg = PW.guards;    fg = .white
+        case .available:   bg = PW.ok;        fg = .white
+        case .maintenance: bg = PW.warn;      fg = .black
+        case .offline:     bg = PW.silverInk; fg = .white
         }
-    }
-
-    private func statusColor(_ status: Rig.RigStatus) -> Color {
-        switch status {
-        case .available: return PW.ok
-        case .occupied: return PW.guards
-        case .maintenance: return PW.warn
-        case .offline: return PW.silverDim
-        }
+        let num = rig.label.components(separatedBy: CharacterSet.decimalDigits.inverted)
+            .compactMap(Int.init).first ?? 0
+        return Text(String(format: "%02d", num))
+            .font(PW.FontStyle.mono(10, weight: .bold))
+            .foregroundColor(fg)
+            .tracking(0.4)
+            .frame(maxWidth: .infinity, minHeight: 28)
+            .background(bg)
     }
 
     // MARK: - Data loading
@@ -373,7 +326,6 @@ struct AnalyticsView: View {
         isLoading = true
         defer { isLoading = false }
         error = nil
-
         do {
             let currentAPI = resolvedAPI()
             async let fetchedSessions = currentAPI.sessions(filter: SessionFilter(limit: 100))
@@ -385,7 +337,7 @@ struct AnalyticsView: View {
         } catch let e as APIError {
             switch e {
             case .notAttached:
-                error = "Not connected to a location. Go back and select a location first."
+                error = "Not connected to a location."
             case .serverError(401, _), .serverError(403, _):
                 error = "Authentication required"
             default:
@@ -397,7 +349,7 @@ struct AnalyticsView: View {
     }
 }
 
-// MARK: - KPI Hero Card
+// MARK: - KPI Hero Card (kept for any remaining references)
 
 struct KPIHeroCard: View {
     let label: String
@@ -407,16 +359,18 @@ struct KPIHeroCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(label)
-                .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                .foregroundStyle(PW.silverDim)
+            Text(label.uppercased())
+                .font(PW.FontStyle.mono(9, weight: .semibold))
+                .foregroundColor(PW.silverDim)
+                .tracking(2.0)
             Text(value)
-                .font(.system(size: 28, weight: .bold, design: .monospaced))
-                .foregroundStyle(accent)
+                .font(PW.FontStyle.telemetry(28))
+                .foregroundColor(accent)
             if let footnote {
                 Text(footnote)
-                    .font(.system(size: 9, design: .monospaced))
-                    .foregroundStyle(PW.silverDim)
+                    .font(PW.FontStyle.mono(9, weight: .semibold))
+                    .foregroundColor(PW.silverDim)
+                    .tracking(1.8)
             }
         }
         .padding(.horizontal, 20)

@@ -1,35 +1,10 @@
 import SwiftUI
 
-enum Tab: String, CaseIterable {
-    case rigs = "Rigs"
-    case raceControl = "Race Control"
-    case raceWall = "Race Wall"
-    case competition = "Competition"
-    case broadcast = "Broadcast"
-    case analytics = "Analytics"
-    case server = "Server"
-    case settings = "Settings"
-
-    var icon: String {
-        switch self {
-        case .rigs: return "square.grid.2x2"
-        case .raceControl: return "flag.checkered"
-        case .raceWall: return "rectangle.3.group.fill"
-        case .competition: return "trophy"
-        case .broadcast: return "video"
-        case .analytics: return "chart.bar"
-        case .server: return "server.rack"
-        case .settings: return "gear"
-        }
-    }
-}
-
 struct ContentView: View {
     @Environment(BackendStore.self) private var store
     @Environment(MCClient.self) private var mc
     @Environment(DashboardViewModel.self) private var viewModel
-    @State private var selectedTab: Tab? = .rigs
-    @State private var showAISheet = false
+    @State private var selectedTab: SidebarTab = .rigs
 
     var body: some View {
         Group {
@@ -43,63 +18,30 @@ struct ContentView: View {
         }
     }
 
-    private var tabsForKind: [Tab] {
-        let all = Tab.allCases
-        return mc.attachedIsOrg ? all : all.filter { $0 != .raceWall }
-    }
-
     @ViewBuilder
     private var attachedView: some View {
-        NavigationSplitView {
-            List(selection: $selectedTab) {
-                Section("Operations") {
-                    ForEach([Tab.rigs, .raceControl, .competition], id: \.self) { tab in
-                        if tabsForKind.contains(tab) {
-                            Label(tab.rawValue, systemImage: tab.icon).tag(tab)
-                        }
-                    }
-                }
-                Section("Media") {
-                    ForEach([Tab.broadcast, .raceWall], id: \.self) { tab in
-                        if tabsForKind.contains(tab) {
-                            Label(tab.rawValue, systemImage: tab.icon).tag(tab)
-                        }
-                    }
-                }
-                Section("Insights") {
-                    Label(Tab.analytics.rawValue, systemImage: Tab.analytics.icon).tag(Tab.analytics)
-                }
-                Section("System") {
-                    Label(Tab.server.rawValue, systemImage: Tab.server.icon).tag(Tab.server)
-                    Label(Tab.settings.rawValue, systemImage: Tab.settings.icon).tag(Tab.settings)
-                }
+        HStack(spacing: 0) {
+            PWSidebar(
+                selected: $selectedTab,
+                showWall: mc.attachedIsOrg,
+                locationName: mc.attached?.name ?? "PITWALL"
+            )
+
+            ZStack {
+                PW.carbon.ignoresSafeArea()
+                detailView(for: selectedTab)
             }
-            .listStyle(.sidebar)
-            .navigationTitle(mc.attached?.name ?? "PitWall")
-            .toolbar {
-                ToolbarItem {
-                    Button { showAISheet = true } label: {
-                        Image(systemName: "sparkles")
-                    }
-                    .accessibilityLabel("AI Assistant")
-                }
-            }
-        } detail: {
-            detailView(for: selectedTab ?? .rigs)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .sheet(isPresented: $showAISheet) {
-            AIOperatorView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(PW.panel)
-        }
+        .ignoresSafeArea()
     }
 
     @ViewBuilder
-    private func detailView(for tab: Tab) -> some View {
+    private func detailView(for tab: SidebarTab) -> some View {
         switch tab {
         case .rigs:        RigGridView()
-        case .raceControl: RaceControlView()
-        case .raceWall:    RaceWallView()
+        case .race:        RaceControlView()
+        case .wall:        RaceWallView()
         case .competition: CompetitionView()
         case .broadcast:   BroadcastView()
         case .analytics:   AnalyticsView()

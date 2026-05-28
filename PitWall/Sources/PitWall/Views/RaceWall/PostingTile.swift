@@ -4,94 +4,116 @@ struct PostingTile: View {
     let posting: RacePosting
     let onJoin: () -> Void
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            header
-            trackLine
-            HStack(spacing: 8) {
-                statusPill
-                slotPill
-                Spacer()
-                actionButton
-            }
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(PW.panel2)
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(posting.status == .live ? PW.guards : PW.line, lineWidth: 1.5)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-    }
+    private var isLive: Bool { posting.status == .live }
+    private var isEnded: Bool { posting.status == .ended || posting.status == .cancelled }
+    private var isFull: Bool { posting.status == .full }
 
-    private var header: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(posting.trackName)
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(PW.silver)
-                if let src = posting.sourceName {
-                    Text("from \(src)")
-                        .font(.system(size: 11))
-                        .foregroundStyle(PW.silverDim)
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            VStack(alignment: .leading, spacing: 10) {
+                // Header
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        if let src = posting.sourceName {
+                            Text("FROM · \(src.uppercased())")
+                                .font(PW.FontStyle.mono(9, weight: .semibold))
+                                .foregroundColor(PW.silverDim)
+                                .tracking(2.0)
+                        }
+                        Text(posting.trackName.uppercased())
+                            .font(PW.FontStyle.card(26))
+                            .foregroundColor(PW.silver)
+                            .tracking(-0.52)
+                            .lineLimit(1)
+                        Text(posting.vehicleClass.uppercased())
+                            .font(PW.FontStyle.mono(10, weight: .semibold))
+                            .foregroundColor(PW.silver2)
+                            .tracking(1.0)
+                    }
+                    Spacer()
+                    StatusChip(chipStatus(posting.status), compact: true)
+                }
+
+                // Slot grid
+                HStack(spacing: 8) {
+                    let filled = posting.slotTotal - posting.slotOpen
+                    ForEach(0..<min(posting.slotTotal, 12), id: \.self) { idx in
+                        Rectangle()
+                            .fill(idx < filled ? (isLive ? PW.guards : PW.silverMid) : Color.clear)
+                            .frame(width: 12, height: 12)
+                            .overlay(
+                                Rectangle().stroke(
+                                    idx < filled ? (isLive ? PW.guards : PW.silverMid) : PW.lineStrong,
+                                    lineWidth: 1
+                                )
+                            )
+                    }
+                    Text("\(filled) / \(posting.slotTotal) GRID")
+                        .font(PW.FontStyle.mono(9, weight: .semibold))
+                        .foregroundColor(PW.silverMid)
+                        .tracking(1.8)
+                        .padding(.leading, 4)
+                }
+
+                // Footer
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("LEADER · —")
+                            .font(PW.FontStyle.mono(9, weight: .semibold))
+                            .foregroundColor(PW.silverDim)
+                            .tracking(1.8)
+                        Text("—:——.———")
+                            .font(PW.FontStyle.mono(12, weight: .bold))
+                            .foregroundColor(isEnded ? PW.silverMid : PW.ok)
+                    }
+
+                    Spacer()
+
+                    if isLive {
+                        Button("JOIN →") { onJoin() }
+                            .buttonStyle(PrimaryButtonStyle(.primary, compact: true))
+                    } else if isFull {
+                        Button("RSVP") {}
+                            .buttonStyle(PrimaryButtonStyle(.secondary, compact: true))
+                    } else if isEnded {
+                        Text("WINNER · —")
+                            .font(PW.FontStyle.mono(9, weight: .semibold))
+                            .foregroundColor(PW.silverDim)
+                            .tracking(2.0)
+                    }
+                }
+                .padding(.top, 10)
+                .overlay(alignment: .top) {
+                    Rectangle().fill(PW.line).frame(height: 1)
                 }
             }
-            Spacer()
-            if posting.status == .live {
-                LivePulse()
+            .padding(.vertical, 14)
+            .padding(.horizontal, 16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(PW.panel)
+            .overlay(
+                Rectangle().stroke(isLive ? PW.guards : PW.line, lineWidth: isLive ? 1 : 1)
+            )
+            .overlay(alignment: .leading) {
+                if isLive {
+                    Rectangle().fill(PW.guards).frame(width: 3)
+                }
+            }
+
+            // Corner stripes for live
+            if isLive {
+                CornerStripes(size: 64)
+                    .offset(x: 16, y: -16)
+                    .allowsHitTesting(false)
             }
         }
     }
 
-    private var trackLine: some View {
-        HStack(spacing: 12) {
-            Label(posting.vehicleClass, systemImage: "car.fill")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(PW.silverMid)
-            if let v = posting.vehicleName {
-                Text("· \(v)")
-                    .font(.system(size: 12)).foregroundStyle(PW.silverDim)
-            }
-        }
-    }
-
-    private var statusPill: some View {
-        Text(posting.status.rawValue.uppercased())
-            .font(.system(size: 10, weight: .semibold).monospaced())
-            .padding(.horizontal, 8).padding(.vertical, 3)
-            .background(statusColor.opacity(0.18))
-            .foregroundStyle(statusColor)
-            .clipShape(Capsule())
-    }
-
-    private var slotPill: some View {
-        Text("\(posting.slotOpen)/\(posting.slotTotal) slots")
-            .font(.system(size: 10, weight: .semibold).monospaced())
-            .padding(.horizontal, 8).padding(.vertical, 3)
-            .background(PW.panel3)
-            .foregroundStyle(PW.silver)
-            .clipShape(Capsule())
-    }
-
-    private var statusColor: Color {
-        switch posting.status {
-        case .live: return PW.ok
-        case .full: return PW.warn
-        case .ended, .cancelled: return PW.silverDim
-        }
-    }
-
-    @ViewBuilder
-    private var actionButton: some View {
-        if posting.slotOpen > 0 && posting.status == .live {
-            Button("JOIN") { onJoin() }
-                .font(.system(size: 12, weight: .bold))
-                .padding(.horizontal, 14).padding(.vertical, 6)
-                .background(PW.guards)
-                .foregroundStyle(PW.silver)
-                .clipShape(Capsule())
-                .buttonStyle(.plain)
+    private func chipStatus(_ s: RacePosting.Status) -> StatusChip.Status {
+        switch s {
+        case .live: return .live
+        case .full: return .full
+        case .ended, .cancelled: return .ended
         }
     }
 }

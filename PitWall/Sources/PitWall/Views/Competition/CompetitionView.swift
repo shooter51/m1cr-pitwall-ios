@@ -7,56 +7,45 @@ struct CompetitionView: View {
     @State private var showCreateForm = false
 
     var body: some View {
-        ZStack {
-            PW.carbon.ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                // Active competition banner
-                if let active = dashboardVM.liveState?.competition {
-                    ActiveCompetitionBanner(competition: active)
-                }
-
-                // Standings table header
-                standingsHeader
-
-                // Main content
-                if competitionVM?.isLoading == true {
-                    Spacer()
-                    ProgressView()
-                        .tint(PW.guards)
-                    Spacer()
-                } else {
-                    ScrollView {
-                        VStack(spacing: 0) {
-                            // Standings
-                            standingsSection
-
-                            Divider().background(PW.lineStrong)
-                                .padding(.vertical, PW.sectionSpacing)
-
-                            // Past competitions today
-                            pastSection
-                        }
-                        .padding(.bottom, PW.sectionSpacing)
-                    }
-                    .refreshable { await competitionVM?.loadCompetitions() }
-                }
-            }
-        }
-        .navigationTitle("Competition")
-        #if os(iOS)
-        .navigationBarTitleDisplayMode(.inline)
-        #endif
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
+        VStack(spacing: 0) {
+            PWTopBar(
+                eyebrow: "03 · OPERATIONS",
+                title: "Competition"
+            ) {
+                Text("FORMAT · FASTEST LAP")
+                PWTopBarDivider()
+                Text("CLASS · GT3")
+                PWTopBarDivider()
+                Text("ENTRIES · 23")
+            } actions: {
+                Button("END COMP") {}
+                    .buttonStyle(PrimaryButtonStyle(.secondary, compact: true))
                 Button {
                     showCreateForm = true
                 } label: {
-                    Image(systemName: "plus")
-                        .foregroundStyle(PW.guards)
+                    Text("+ NEW")
                 }
+                .buttonStyle(PrimaryButtonStyle(.primary, compact: true))
             }
+
+            // Live banner
+            if let active = dashboardVM.liveState?.competition {
+                liveBanner(competition: active)
+            }
+
+            HStack(spacing: 0) {
+                // Standings table
+                standingsSection
+
+                Rectangle().fill(PW.line).frame(width: 1)
+
+                // Calendar aside
+                calendarAside
+                    .frame(width: 280)
+            }
+            .frame(maxHeight: .infinity)
         }
+        .background(PW.carbon)
         .sheet(isPresented: $showCreateForm) {
             if let vm = competitionVM {
                 CreateCompetitionSheet(vm: vm)
@@ -77,200 +66,309 @@ struct CompetitionView: View {
         }
     }
 
-    // MARK: - Standings section
+    // MARK: - Live banner
 
-    private var standingsHeader: some View {
-        HStack {
-            Text("STANDINGS")
-                .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                .foregroundStyle(PW.silverDim)
-            Spacer()
-            if competitionVM?.isLoading == true {
-                ProgressView().scaleEffect(0.7).tint(PW.silverDim)
+    private func liveBanner(competition: Competition) -> some View {
+        ZStack(alignment: .topTrailing) {
+            HStack(spacing: 24) {
+                HStack(spacing: 10) {
+                    StatusChip(.live)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("// FRIDAY · 19:00 – 23:00")
+                            .font(PW.FontStyle.mono(9, weight: .semibold))
+                            .foregroundColor(PW.silverDim)
+                            .tracking(2.0)
+                        Text(competition.name.uppercased())
+                            .font(PW.FontStyle.title(30))
+                            .foregroundColor(PW.silver)
+                            .tracking(-0.6)
+                    }
+                }
+
+                HStack(spacing: 18) {
+                    telBlock(label: "WINDOW LEFT", value: "03:14:22", color: PW.guardsBright)
+                    telBlock(label: "ENTRIES", value: "23", color: PW.silver)
+                    telBlock(label: "BEST LAP", value: "1:28.432", color: PW.ok)
+                }
+
+                Rectangle().fill(PW.line).frame(width: 1, height: 36)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("PRIZE")
+                        .font(PW.FontStyle.mono(9, weight: .semibold))
+                        .foregroundColor(PW.silverDim)
+                        .tracking(2.0)
+                    if let prize = competition.prizeDescription {
+                        Text(prize.uppercased())
+                            .font(PW.FontStyle.title(22))
+                            .foregroundColor(PW.warn)
+                            .tracking(-0.22)
+                    }
+                }
+
+                Spacer()
             }
+            .padding(.horizontal, 22)
+            .padding(.vertical, 16)
+            .background(PW.panel)
+            .overlay(alignment: .leading) {
+                Rectangle().fill(PW.guards).frame(width: 3)
+            }
+            .overlay(alignment: .bottom) {
+                Rectangle().fill(PW.line).frame(height: 1)
+            }
+            .clipped()
+
+            CornerStripes(size: 80)
+                .offset(x: 20, y: -20)
+                .allowsHitTesting(false)
         }
-        .padding(.horizontal, PW.cardPadding)
-        .padding(.vertical, 10)
-        .background(PW.panel2)
     }
+
+    private func telBlock(label: String, value: String, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(PW.FontStyle.mono(9, weight: .semibold))
+                .foregroundColor(PW.silverDim)
+                .tracking(2.0)
+            Text(value)
+                .font(PW.FontStyle.telemetry(20))
+                .foregroundColor(color)
+        }
+    }
+
+    // MARK: - Standings
 
     private var standingsSection: some View {
         VStack(spacing: 0) {
             // Column header
-            HStack {
-                Text("POS").frame(width: 36, alignment: .center)
-                Text("DRIVER").frame(maxWidth: .infinity, alignment: .leading)
-                Text("BEST LAP").frame(width: 90, alignment: .trailing)
-                Text("GAP").frame(width: 80, alignment: .trailing)
-                Text("LAPS").frame(width: 48, alignment: .trailing)
+            HStack(spacing: 0) {
+                timingHeader("POS",      w: 48)
+                timingHeader("DRIVER",   flex: true)
+                timingHeader("BEST LAP", w: 120, trailing: true)
+                timingHeader("GAP",      w: 110, trailing: true)
+                timingHeader("LAPS",     w: 60, trailing: true)
             }
-            .font(.system(size: 10, weight: .semibold, design: .monospaced))
-            .foregroundStyle(PW.silverDim)
-            .padding(.horizontal, PW.cardPadding)
-            .padding(.vertical, 8)
-            .background(PW.panel)
+            .padding(.horizontal, 22)
+            .frame(height: 36)
+            .background(PW.panel2)
+            .overlay(alignment: .bottom) {
+                Rectangle().fill(PW.line).frame(height: 1)
+            }
 
             let occupied = dashboardVM.liveState?.rigs
                 .filter { $0.status == .occupied }
                 .sorted { ($0.position ?? 999) < ($1.position ?? 999) } ?? []
 
             if occupied.isEmpty {
-                Text("No drivers on track. Standings will appear when drivers start racing.")
-                    .font(.system(size: 13))
-                    .foregroundStyle(PW.silverDim)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .multilineTextAlignment(.center)
-                    .padding(.vertical, 24)
+                emptyStandings
             } else {
-                ForEach(occupied) { rig in
-                    standingsRow(rig: rig, leaderBestMs: occupied.first?.bestLapMs)
-                    Divider().background(PW.line)
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(Array(occupied.enumerated()), id: \.element.id) { idx, rig in
+                            standingsRow(rig: rig, idx: idx)
+                            Rectangle().fill(PW.line).frame(height: 1)
+                        }
+                    }
                 }
             }
         }
+        .frame(maxWidth: .infinity)
     }
 
-    private func standingsRow(rig: LiveRig, leaderBestMs: Int?) -> some View {
-        let pos = rig.position ?? 99
-        let isLeader = pos == 1
+    private var emptyStandings: some View {
+        VStack {
+            Spacer()
+            Text("NO DRIVERS ON TRACK")
+                .font(PW.FontStyle.mono(11, weight: .semibold))
+                .foregroundColor(PW.silverDim)
+                .tracking(1.6)
+            Spacer()
+        }
+        .frame(maxWidth: .infinity)
+    }
 
-        return HStack {
-            Text("P\(pos)")
-                .frame(width: 36, alignment: .center)
-                .font(.system(size: 12, weight: .bold, design: .monospaced))
-                .foregroundStyle(isLeader ? PW.guards : PW.silverMid)
+    private func standingsRow(rig: LiveRig, idx: Int) -> some View {
+        let isLead = idx == 0
+        let leaderBest = dashboardVM.liveState?.rigs
+            .filter { $0.status == .occupied }
+            .sorted { ($0.position ?? 999) < ($1.position ?? 999) }
+            .first?.bestLapMs
+        let gap = (isLead || leaderBest == nil) ? nil : rig.bestLapMs.map { $0 - (leaderBest ?? 0) }
 
+        return HStack(spacing: 0) {
+            // POS
+            HStack(spacing: 0) {
+                let pos = rig.position ?? (idx + 1)
+                Text("P\(pos)")
+                    .font(PW.FontStyle.mono(12, weight: .bold))
+                    .foregroundColor(isLead ? .white : PW.silver)
+                    .tracking(0.4)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(isLead ? PW.guards : (idx < 3 ? PW.panel3 : Color.clear))
+            }
+            .frame(width: 48, alignment: .leading)
+
+            // DRIVER
             Text((rig.driverName ?? rig.label).uppercased())
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .font(.system(size: 12, weight: .medium, design: .monospaced))
-                .foregroundStyle(PW.silver)
+                .font(PW.FontStyle.mono(13, weight: .semibold))
+                .foregroundColor(PW.silver)
+                .tracking(0.4)
                 .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
+            // BEST LAP
             Text(formatLap(rig.bestLapMs))
-                .frame(width: 90, alignment: .trailing)
-                .font(.system(size: 12, design: .monospaced))
-                .foregroundStyle(PW.ok)
+                .font(PW.FontStyle.mono(14, weight: .bold))
+                .foregroundColor(isLead ? PW.guardsBright : PW.ok)
+                .frame(width: 120, alignment: .trailing)
 
-            Text(formatGap(rig.gapToLeaderMs))
-                .frame(width: 80, alignment: .trailing)
-                .font(.system(size: 12, design: .monospaced))
-                .foregroundStyle(PW.silverDim)
+            // GAP
+            Text(isLead ? "— LEADER" : formatGap(gap))
+                .font(PW.FontStyle.mono(12, weight: .semibold))
+                .foregroundColor(PW.silverMid)
+                .frame(width: 110, alignment: .trailing)
 
-            Text(rig.currentLap.map { "\($0)" } ?? "—")
-                .frame(width: 48, alignment: .trailing)
-                .font(.system(size: 12, design: .monospaced))
-                .foregroundStyle(PW.silverMid)
+            // LAPS
+            Text("\(rig.currentLap ?? 0)")
+                .font(PW.FontStyle.mono(12, weight: .semibold))
+                .foregroundColor(PW.silverMid)
+                .frame(width: 60, alignment: .trailing)
         }
-        .padding(.horizontal, PW.cardPadding)
-        .padding(.vertical, 8)
-        .background(isLeader ? PW.guards.opacity(0.05) : Color.clear)
+        .padding(.horizontal, 22)
+        .frame(height: 40)
+        .background(isLead ? PW.guardsBright.opacity(0.07) : (idx % 2 != 0 ? PW.carbon2 : Color.clear))
         .overlay(alignment: .leading) {
-            if isLeader {
-                Rectangle().fill(PW.guards).frame(width: 3)
-            }
+            if isLead { Rectangle().fill(PW.guards).frame(width: 3) }
         }
     }
 
-    // MARK: - Past competitions section
+    @ViewBuilder
+    private func timingHeader(_ text: String, w: CGFloat? = nil,
+                               flex: Bool = false, trailing: Bool = false) -> some View {
+        let aligned: Alignment = trailing ? .trailing : .leading
+        let label = Text(text)
+            .font(PW.FontStyle.mono(9, weight: .semibold))
+            .foregroundColor(PW.silverDim)
+            .tracking(2.2)
+        if flex {
+            label.frame(maxWidth: .infinity, alignment: aligned)
+        } else if let w {
+            label.frame(width: w, alignment: aligned)
+        } else {
+            label
+        }
+    }
 
-    private var pastSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
+    // MARK: - Calendar aside
+
+    private var calendarAside: some View {
+        let entries: [(st: String, name: String, when: String, note: String)] = [
+            ("COMPLETED", "Brunch Time Attack", "11:00 – 13:00", "D. KIM 1:29.001"),
+            ("COMPLETED", "Afternoon Sprint", "14:00 – 17:00", "F. OKONKWO 1:28.014"),
+            ("LIVE", "Friday Night Cup", "19:00 – 23:00", "— NAVARRO P1"),
+            ("SCHEDULED", "Saturday GT4 Endurance", "SAT 10:00", "0 / 32 entries"),
+        ]
+
+        return VStack(alignment: .leading, spacing: 14) {
+            Text("// TODAY'S CALENDAR")
+                .font(PW.FontStyle.mono(9, weight: .bold))
+                .foregroundColor(PW.silverDim)
+                .tracking(2.2)
+
+            VStack(spacing: 10) {
+                ForEach(Array(entries.enumerated()), id: \.offset) { _, entry in
+                    calendarEntry(entry.st, name: entry.name, when: entry.when, note: entry.note)
+                }
+            }
+
+            Spacer()
+        }
+        .padding(18)
+        .background(PW.panel)
+    }
+
+    private func calendarEntry(_ status: String, name: String, when: String, note: String) -> some View {
+        let accentColor: Color = status == "LIVE" ? PW.guards : status == "COMPLETED" ? PW.silverInk : PW.info
+        let statusColor: Color = status == "LIVE" ? PW.guardsBright : status == "COMPLETED" ? PW.silverDim : PW.info
+
+        return VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text("TODAY'S COMPETITIONS")
-                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(PW.silverDim)
+                Text(status)
+                    .font(PW.FontStyle.mono(9, weight: .bold))
+                    .foregroundColor(statusColor)
+                    .tracking(2.0)
                 Spacer()
-                Button("Refresh") {
-                    Task { await competitionVM?.loadCompetitions() }
-                }
-                .font(.system(size: 11, design: .monospaced))
-                .foregroundStyle(PW.guards)
+                Text(when)
+                    .font(PW.FontStyle.mono(9, weight: .semibold))
+                    .foregroundColor(PW.silverDim)
+                    .tracking(1.6)
             }
-            .padding(.horizontal, PW.cardPadding)
-            .padding(.vertical, 10)
-            .background(PW.panel2)
-
-            let comps = competitionVM?.competitions ?? []
-            if comps.isEmpty {
-                Text("No competitions today")
-                    .font(.system(size: 13, design: .monospaced))
-                    .foregroundStyle(PW.silverDim)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 24)
-            } else {
-                ForEach(comps) { comp in
-                    CompetitionRow(competition: comp)
-                    Divider().background(PW.line)
-                }
-            }
+            Text(name)
+                .font(PW.FontStyle.body(13))
+                .foregroundColor(PW.silver)
+                .fontWeight(.semibold)
+            Text(note.uppercased())
+                .font(PW.FontStyle.mono(9, weight: .semibold))
+                .foregroundColor(PW.silverMid)
+                .tracking(1.4)
+        }
+        .padding(.vertical, 11)
+        .padding(.horizontal, 12)
+        .background(PW.carbon2)
+        .overlay(alignment: .leading) {
+            Rectangle().fill(accentColor).frame(width: 2)
         }
     }
 
     // MARK: - Formatting
 
-    private func formatLap(_ ms: Int?) -> String {
-        LapTimeFormatter.format(ms)
-    }
-
+    private func formatLap(_ ms: Int?) -> String { LapTimeFormatter.format(ms) }
     private func formatGap(_ ms: Int?) -> String {
         guard let ms else { return "—" }
         if ms == 0 { return "LEADER" }
-        let s = Double(ms) / 1000.0
-        return String(format: "+%.3fs", s)
+        return String(format: "+%.3fs", Double(ms) / 1000.0)
     }
 }
 
-// MARK: - Active Competition Banner
+// MARK: - Keep existing helper views from original file
 
 struct ActiveCompetitionBanner: View {
     let competition: Competition
-
     var body: some View {
         HStack(spacing: 16) {
-            Rectangle()
-                .fill(PW.guards)
-                .frame(width: 3)
-
+            Rectangle().fill(PW.guards).frame(width: 3)
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 8) {
-                    Text("LIVE")
-                        .font(.system(size: 9, weight: .bold, design: .monospaced))
-                        .foregroundStyle(PW.guards)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(PW.guards.opacity(0.15))
-
+                    StatusChip(.live, compact: true)
                     Text(competition.name.uppercased())
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(PW.silver)
+                        .font(PW.FontStyle.title(14))
+                        .foregroundColor(PW.silver)
                         .lineLimit(1)
                 }
-
                 HStack(spacing: 12) {
                     Text(competition.type.displayName.uppercased())
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundStyle(PW.silverMid)
-
+                        .font(PW.FontStyle.mono(10, weight: .semibold))
+                        .foregroundColor(PW.silverMid)
+                        .tracking(1.6)
                     Text(competition.trackName.uppercased())
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundStyle(PW.silverMid)
-
-                    Text(competition.vehicleClass.uppercased())
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundStyle(PW.info)
+                        .font(PW.FontStyle.mono(10, weight: .semibold))
+                        .foregroundColor(PW.silverMid)
+                        .tracking(1.6)
                 }
             }
-
             Spacer()
-
             if let prize = competition.prizeDescription {
                 VStack(alignment: .trailing, spacing: 2) {
                     Text("PRIZE")
-                        .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(PW.silverDim)
+                        .font(PW.FontStyle.mono(9, weight: .semibold))
+                        .foregroundColor(PW.silverDim)
+                        .tracking(2.2)
                     Text(prize)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(PW.warn)
+                        .font(PW.FontStyle.body(12))
+                        .foregroundColor(PW.warn)
+                        .fontWeight(.medium)
                 }
             }
         }
@@ -283,53 +381,41 @@ struct ActiveCompetitionBanner: View {
     }
 }
 
-// MARK: - Competition Row
-
 struct CompetitionRow: View {
     let competition: Competition
-
     var body: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(competition.name)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(PW.silver)
+                    .font(PW.FontStyle.body(13))
+                    .foregroundColor(PW.silver)
+                    .fontWeight(.medium)
                     .lineLimit(1)
-
                 HStack(spacing: 8) {
                     Text(competition.type.displayName)
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundStyle(PW.silverDim)
+                        .font(PW.FontStyle.mono(10, weight: .semibold))
+                        .foregroundColor(PW.silverDim)
+                        .tracking(1.6)
                     Text(competition.trackName)
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundStyle(PW.silverDim)
+                        .font(PW.FontStyle.mono(10, weight: .semibold))
+                        .foregroundColor(PW.silverDim)
+                        .tracking(1.6)
                 }
             }
-
             Spacer()
-
-            statusBadge(competition.status)
+            StatusChip(mapCompStatus(competition.status), compact: true)
         }
         .padding(.horizontal, PW.cardPadding)
         .padding(.vertical, 10)
         .background(PW.panel)
     }
 
-    private func statusBadge(_ status: Competition.CompetitionStatus) -> some View {
-        Text(status.rawValue.uppercased())
-            .font(.system(size: 9, weight: .bold, design: .monospaced))
-            .foregroundStyle(statusColor(status))
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(statusColor(status).opacity(0.15))
-    }
-
-    private func statusColor(_ status: Competition.CompetitionStatus) -> Color {
-        switch status {
-        case .active: return PW.guards
-        case .scheduled: return PW.info
-        case .completed: return PW.ok
-        case .cancelled: return PW.silverDim
+    private func mapCompStatus(_ s: Competition.CompetitionStatus) -> StatusChip.Status {
+        switch s {
+        case .active: return .live
+        case .scheduled: return .available
+        case .completed: return .ended
+        case .cancelled: return .offline
         }
     }
 }
@@ -352,14 +438,12 @@ struct CreateCompetitionSheet: View {
         NavigationStack {
             ZStack {
                 PW.carbon.ignoresSafeArea()
-
                 ScrollView {
                     VStack(alignment: .leading, spacing: PW.sectionSpacing) {
                         formField(label: "NAME", placeholder: "Friday Night Cup") {
                             TextField("", text: $name)
                                 .textFieldStyle(PWTextFieldStyle())
                         }
-
                         formField(label: "TYPE") {
                             Picker("", selection: $type) {
                                 ForEach(Competition.CompetitionType.allCases, id: \.self) { t in
@@ -369,22 +453,15 @@ struct CreateCompetitionSheet: View {
                             .pickerStyle(.segmented)
                             .colorScheme(.dark)
                         }
-
                         formField(label: "TRACK NAME", placeholder: "Laguna Seca") {
-                            TextField("", text: $trackId)
-                                .textFieldStyle(PWTextFieldStyle())
+                            TextField("", text: $trackId).textFieldStyle(PWTextFieldStyle())
                         }
-
                         formField(label: "VEHICLE CLASS", placeholder: "GT3") {
-                            TextField("", text: $vehicleClass)
-                                .textFieldStyle(PWTextFieldStyle())
+                            TextField("", text: $vehicleClass).textFieldStyle(PWTextFieldStyle())
                         }
-
                         formField(label: "PRIZE DESCRIPTION", placeholder: "£50 voucher (optional)") {
-                            TextField("", text: $prizeDescription)
-                                .textFieldStyle(PWTextFieldStyle())
+                            TextField("", text: $prizeDescription).textFieldStyle(PWTextFieldStyle())
                         }
-
                         formField(label: "MAX PARTICIPANTS", placeholder: "10 (optional)") {
                             TextField("", text: $maxParticipantsText)
                                 .textFieldStyle(PWTextFieldStyle())
@@ -392,7 +469,6 @@ struct CreateCompetitionSheet: View {
                                 .keyboardType(.numberPad)
                                 #endif
                         }
-
                         Button(action: submit) {
                             HStack {
                                 if isCreating {
@@ -415,23 +491,20 @@ struct CreateCompetitionSheet: View {
             #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                        .foregroundStyle(PW.silverMid)
+                    Button("Cancel") { dismiss() }.foregroundStyle(PW.silverMid)
                 }
             }
         }
     }
 
     @ViewBuilder
-    private func formField<Content: View>(
-        label: String,
-        placeholder: String = "",
-        @ViewBuilder content: () -> Content
-    ) -> some View {
+    private func formField<Content: View>(label: String, placeholder: String = "",
+                                         @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(label)
-                .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                .foregroundStyle(PW.silverDim)
+                .font(PW.FontStyle.mono(10, weight: .semibold))
+                .foregroundColor(PW.silverDim)
+                .tracking(2.0)
             content()
         }
     }
@@ -439,16 +512,12 @@ struct CreateCompetitionSheet: View {
     private func submit() {
         guard !name.isEmpty else { return }
         isCreating = true
-
         let params = CreateCompetitionParams(
-            name: name,
-            type: type,
-            trackId: trackId,
+            name: name, type: type, trackId: trackId,
             vehicleClass: vehicleClass,
             maxParticipants: Int(maxParticipantsText),
             prizeDescription: prizeDescription.isEmpty ? nil : prizeDescription
         )
-
         Task {
             defer { isCreating = false }
             let success = await vm.create(params: params)
@@ -458,29 +527,23 @@ struct CreateCompetitionSheet: View {
 }
 
 // MARK: - Text Field Style
-
 struct PWTextFieldStyle: TextFieldStyle {
     func _body(configuration: TextField<Self._Label>) -> some View {
         configuration
-            .font(.system(size: 14, design: .monospaced))
-            .foregroundStyle(PW.silver)
+            .font(PW.FontStyle.mono(14, weight: .semibold))
+            .foregroundColor(PW.silver)
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
             .background(PW.panel2)
-            .overlay(
-                Rectangle()
-                    .stroke(PW.lineStrong, lineWidth: 1)
-            )
+            .overlay(Rectangle().stroke(PW.lineStrong, lineWidth: 1))
     }
 }
 
 // MARK: - Competition type helpers
-
 extension Competition.CompetitionType: CaseIterable {
     public static var allCases: [Competition.CompetitionType] {
         [.fastestLap, .race, .endurance, .timeAttack]
     }
-
     var displayName: String {
         switch self {
         case .fastestLap: return "Fastest Lap"

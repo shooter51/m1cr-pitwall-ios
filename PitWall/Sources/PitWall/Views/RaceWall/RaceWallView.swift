@@ -1,19 +1,87 @@
 import SwiftUI
 
-/// In-org surface: live Race Postings from child Locations.
-/// Shown only when the attached MC is kind=org. See ContentView.tabsForKind.
 struct RaceWallView: View {
     @Environment(MCClient.self) private var mc
     @State private var vm: RaceWallViewModel?
     @State private var joinSheet: RacePosting?
+    @State private var activeFilter = "ALL"
 
-    private let columns = [GridItem(.adaptive(minimum: 280, maximum: 420), spacing: 16)]
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: PW.gap2), count: 3)
+    private let filters = ["ALL", "LIVE", "OPEN SLOTS", "GT3"]
 
     var body: some View {
-        ZStack {
-            PW.carbon.ignoresSafeArea()
-            content
+        VStack(spacing: 0) {
+            PWTopBar(
+                eyebrow: "05 · MEDIA · ORG-ONLY",
+                title: "Race Wall"
+            ) {
+                Text("ORG · M1CR · 12 LOCATIONS")
+                PWTopBarDivider()
+                Text("POSTINGS · \(vm?.postings.count ?? 0) ACTIVE")
+                PWTopBarDivider()
+                HStack(spacing: 6) {
+                    LiveDot(color: PW.ok, size: 6)
+                    Text("SYNCED")
+                }
+            } actions: {
+                Button("SYNC") {}
+                    .buttonStyle(PrimaryButtonStyle(.secondary, compact: true))
+                Button("POST RACE") {}
+                    .buttonStyle(PrimaryButtonStyle(.primary, compact: true))
+            }
+
+            // Body
+            VStack(alignment: .leading, spacing: 0) {
+                // Section header + filters
+                HStack {
+                    Text("// LIVE FROM SISTER LOCATIONS")
+                        .pwEyebrow()
+
+                    Spacer()
+
+                    HStack(spacing: 8) {
+                        ForEach(filters, id: \.self) { f in
+                            let sel = activeFilter == f
+                            Button(f) { activeFilter = f }
+                                .font(PW.FontStyle.mono(10, weight: .semibold))
+                                .foregroundColor(sel ? PW.guardsBright : PW.silverMid)
+                                .tracking(1.6)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(sel ? PW.guardsBright.opacity(0.08) : Color.clear)
+                                .overlay(
+                                    Rectangle().stroke(sel ? PW.guards : PW.lineStrong, lineWidth: 1)
+                                )
+                                .buttonStyle(.plain)
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+
+                // Grid
+                if let vm {
+                    if vm.postings.isEmpty {
+                        emptyState
+                    } else {
+                        ScrollView {
+                            LazyVGrid(columns: columns, spacing: PW.gap2) {
+                                ForEach(vm.postings) { posting in
+                                    PostingTile(posting: posting, onJoin: { joinSheet = posting })
+                                }
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 16)
+                        }
+                        .refreshable { await vm.load() }
+                    }
+                } else {
+                    emptyState
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .background(PW.carbon)
         .task {
             if vm == nil { vm = RaceWallViewModel(mc: mc) }
             await vm?.load()
@@ -26,67 +94,17 @@ struct RaceWallView: View {
         }
     }
 
-    @ViewBuilder
-    private var content: some View {
-        if let vm {
-            if let error = vm.error {
-                VStack(spacing: 12) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 28)).foregroundStyle(PW.guards)
-                    Text(error)
-                        .font(.system(size: 14))
-                        .foregroundStyle(PW.silverDim)
-                        .multilineTextAlignment(.center)
-                    Button("Retry") { Task { await vm.load() } }
-                        .font(.system(size: 14, weight: .semibold))
-                        .padding(.horizontal, 16).padding(.vertical, 8)
-                        .background(PW.guards)
-                        .foregroundStyle(PW.silver)
-                        .clipShape(Capsule())
-                }
-                .padding(40)
-            } else if !vm.postings.isEmpty {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
-                        header
-                        LazyVGrid(columns: columns, spacing: 16) {
-                            ForEach(vm.postings) { posting in
-                                PostingTile(
-                                    posting: posting,
-                                    onJoin: { joinSheet = posting }
-                                )
-                            }
-                        }
-                    }
-                    .padding(20)
-                }
-                .refreshable { await vm.load() }
-            } else {
-                emptyState
-            }
-        } else {
-            emptyState
-        }
-    }
-
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Race Wall")
-                .font(.system(size: 32, weight: .bold)).foregroundStyle(PW.silver)
-            Text("Live races posted from your Locations.")
-                .font(.system(size: 14)).foregroundStyle(PW.silverMid)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
     private var emptyState: some View {
-        VStack(spacing: 10) {
-            Image(systemName: "rectangle.3.group")
-                .font(.system(size: 36)).foregroundStyle(PW.silverDim)
-            Text("No live races yet").font(.system(size: 16, weight: .semibold)).foregroundStyle(PW.silver)
-            Text("When a Location posts a race here, you'll see it.").font(.system(size: 12)).foregroundStyle(PW.silverDim)
+        VStack(spacing: 12) {
+            Spacer()
+            Text("NO LIVE RACES FROM SISTER LOCATIONS")
+                .font(PW.FontStyle.mono(11, weight: .semibold))
+                .foregroundColor(PW.silverDim)
+                .tracking(1.6)
+                .multilineTextAlignment(.center)
+            Spacer()
         }
-        .padding(40)
+        .frame(maxWidth: .infinity)
     }
 }
 
@@ -97,25 +115,33 @@ private struct JoinSheet: View {
     @State private var isJoining = false
 
     var body: some View {
-        VStack(spacing: 16) {
-            Text("Join \(posting.trackName)").font(.system(size: 18, weight: .semibold))
-            TextField("Driver name", text: $name)
-                .textFieldStyle(.roundedBorder)
-                .padding(.horizontal, 20)
-                .disabled(isJoining)
-            Button {
-                isJoining = true
-                onJoin(name)
-            } label: {
-                if isJoining {
-                    ProgressView().controlSize(.small)
-                } else {
-                    Text("Join")
+        ZStack {
+            PW.carbon.ignoresSafeArea()
+            VStack(spacing: 20) {
+                Text("JOIN · \(posting.trackName.uppercased())")
+                    .font(PW.FontStyle.title(22))
+                    .foregroundColor(PW.silver)
+                    .tracking(-0.44)
+
+                TextField("Driver name", text: $name)
+                    .textFieldStyle(PWTextFieldStyle())
+                    .padding(.horizontal, 20)
+                    .disabled(isJoining)
+
+                Button {
+                    isJoining = true
+                    onJoin(name)
+                } label: {
+                    if isJoining {
+                        ProgressView().controlSize(.small).tint(.white)
+                    } else {
+                        Text("JOIN →")
+                    }
                 }
+                .buttonStyle(PrimaryButtonStyle(.primary))
+                .disabled(name.isEmpty || isJoining)
             }
-            .buttonStyle(.borderedProminent)
-            .disabled(name.isEmpty || isJoining)
+            .padding(20)
         }
-        .padding(20)
     }
 }

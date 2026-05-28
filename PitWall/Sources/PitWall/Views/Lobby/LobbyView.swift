@@ -1,24 +1,163 @@
 import SwiftUI
 
-/// The lobby board. Tile grid of every Org/Location. Tap to attach.
-/// See `docs/PRD-mobile-command-v2.md` §6 (Themed Board UX → Lobby board).
+/// Shown after picking a backend; selects a location or org to attach.
 struct LobbyView: View {
     @Environment(LobbyViewModel.self) private var vm
     @Environment(MCClient.self) private var mc
     @State private var newSheet = false
 
-    private let columns = [
-        GridItem(.adaptive(minimum: 240, maximum: 360), spacing: 16),
-    ]
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 3)
 
     var body: some View {
         ZStack {
             PW.carbon.ignoresSafeArea()
-            content
+            VStack(spacing: 0) {
+                // Top chrome bar
+                HStack(spacing: 0) {
+                    HStack(spacing: 12) {
+                        HStack(spacing: 0) {
+                            Text("M1")
+                                .font(PW.FontStyle.title(22))
+                                .foregroundColor(PW.guards)
+                                .tracking(-0.44)
+                            Text("·CIRCUIT")
+                                .font(PW.FontStyle.title(22))
+                                .foregroundColor(PW.silver)
+                                .tracking(-0.44)
+                        }
+                        .textCase(.uppercase)
+
+                        Rectangle().fill(PW.line).frame(width: 1, height: 18)
+
+                        Text("PITWALL · TOM'S PITWALL")
+                            .font(PW.FontStyle.mono(10, weight: .semibold))
+                            .foregroundColor(PW.silverMid)
+                            .tracking(2.2)
+                    }
+
+                    Spacer()
+
+                    HStack(spacing: 12) {
+                        HStack(spacing: 6) {
+                            LiveDot(color: PW.ok, size: 7)
+                            Text("CONNECTED · 18ms")
+                                .font(PW.FontStyle.mono(9, weight: .semibold))
+                                .foregroundColor(PW.ok)
+                                .tracking(2.2)
+                        }
+
+                        Rectangle().fill(PW.line).frame(width: 1, height: 16)
+
+                        Button("SWITCH BACKEND") {}
+                            .buttonStyle(PrimaryButtonStyle(.secondary, compact: true))
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.vertical, 16)
+                .overlay(alignment: .bottom) {
+                    Rectangle().fill(PW.line).frame(height: 1)
+                }
+
+                // Headline + actions
+                HStack(alignment: .bottom) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("// LOBBY · SELECT A NODE TO ATTACH")
+                            .font(PW.FontStyle.mono(10, weight: .bold))
+                            .foregroundColor(PW.guardsBright)
+                            .tracking(2.4)
+
+                        HStack(alignment: .lastTextBaseline, spacing: 0) {
+                            Text("CHOOSE ")
+                                .font(PW.FontStyle.h1(56))
+                                .foregroundColor(PW.silver)
+                                .tracking(-1.68)
+                            Text("YOUR PIT.")
+                                .font(PW.FontStyle.h1(56))
+                                .foregroundColor(PW.guards)
+                                .tracking(-1.68)
+                        }
+                        .textCase(.uppercase)
+                    }
+
+                    Spacer()
+
+                    HStack(spacing: 8) {
+                        Button("REFRESH") { Task { await vm.load() } }
+                            .buttonStyle(PrimaryButtonStyle(.secondary, compact: true))
+                        Button("+ NEW NODE") { newSheet = true }
+                            .buttonStyle(PrimaryButtonStyle(.primary, compact: true))
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 20)
+                .padding(.bottom, 8)
+
+                // Grid
+                ScrollView {
+                    LazyVGrid(columns: columns, spacing: 12) {
+                        ForEach(vm.nodes) { node in
+                            NodeTile(
+                                node: node,
+                                isSpawning: vm.spawningNodeIds.contains(node.id),
+                                onTap:    { Task { await vm.attach(to: node) } },
+                                onRename: { newName in Task { await vm.rename(node, to: newName) } },
+                                onDelete: { Task { await vm.delete(node) } }
+                            )
+                        }
+
+                        // Add node tile
+                        Button { newSheet = true } label: {
+                            VStack(spacing: 10) {
+                                ZStack {
+                                    Rectangle()
+                                        .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                                        .foregroundColor(PW.guards)
+                                        .frame(width: 34, height: 34)
+                                    Image(systemName: "plus")
+                                        .font(.system(size: 18, weight: .regular))
+                                        .foregroundColor(PW.guardsBright)
+                                }
+                                Text("ADD LOCATION / ORG")
+                                    .font(PW.FontStyle.mono(10, weight: .semibold))
+                                    .foregroundColor(PW.silverMid)
+                                    .tracking(2.2)
+                            }
+                            .frame(maxWidth: .infinity, minHeight: 158)
+                            .overlay(
+                                Rectangle()
+                                    .strokeBorder(
+                                        style: StrokeStyle(lineWidth: 1, dash: [4, 4])
+                                    )
+                                    .foregroundColor(PW.lineStrong)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.top, 14)
+                }
+                .refreshable { await vm.load() }
+
+                // Footer bar
+                HStack {
+                    Text("\(vm.nodes.filter(\.mc.isRunning).count) ONLINE · \(vm.nodes.filter { !$0.mc.isRunning }.count) OFFLINE · SYNCED 18s AGO")
+                        .font(PW.FontStyle.mono(9, weight: .semibold))
+                        .foregroundColor(PW.silverDim)
+                        .tracking(2.2)
+                    Spacer()
+                    Text("LONG-PRESS · RENAME / DELETE")
+                        .font(PW.FontStyle.mono(9, weight: .semibold))
+                        .foregroundColor(PW.silverDim)
+                        .tracking(2.2)
+                }
+                .padding(.horizontal, 24)
+                .padding(.vertical, 10)
+                .background(PW.carbon2)
+                .overlay(alignment: .top) {
+                    Rectangle().fill(PW.line).frame(height: 1)
+                }
+            }
         }
-        #if os(iOS)
-        .navigationBarTitleDisplayMode(.large)
-        #endif
         .task {
             await vm.load()
             vm.startEventStream()
@@ -29,93 +168,6 @@ struct LobbyView: View {
         .sheet(isPresented: $newSheet) {
             NewNodeSheet().presentationDetents([.medium])
         }
-    }
-
-    @ViewBuilder
-    private var content: some View {
-        switch vm.state {
-        case .idle, .loading where vm.nodes.isEmpty:
-            ProgressView().tint(PW.silver)
-        case .error(let msg) where vm.nodes.isEmpty:
-            errorView(msg)
-        default:
-            grid
-        }
-    }
-
-    private var grid: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                header
-                LazyVGrid(columns: columns, spacing: 16) {
-                    ForEach(vm.nodes) { node in
-                        NodeTile(
-                            node: node,
-                            isSpawning: vm.spawningNodeIds.contains(node.id),
-                            onTap:    { Task { await vm.attach(to: node) } },
-                            onRename: { newName in Task { await vm.rename(node, to: newName) } },
-                            onDelete: { Task { await vm.delete(node) } }
-                        )
-                    }
-                    hostTile
-                }
-            }
-            .padding(20)
-        }
-        .refreshable { await vm.load() }
-    }
-
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("PitWall")
-                .font(.system(size: 32, weight: .bold))
-                .foregroundStyle(PW.silver)
-            Text("Select a location to manage.")
-                .font(.system(size: 14))
-                .foregroundStyle(PW.silverMid)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var hostTile: some View {
-        Button {
-            newSheet = true
-        } label: {
-            VStack(spacing: 8) {
-                Image(systemName: "plus.circle")
-                    .font(.system(size: 36, weight: .semibold))
-                Text("Add Location")
-                    .font(.system(size: 14, weight: .semibold))
-            }
-            .frame(maxWidth: .infinity, minHeight: 132)
-            .foregroundStyle(PW.silverDim)
-            .background(PW.panel)
-            .overlay(
-                RoundedRectangle(cornerRadius: 14)
-                    .strokeBorder(PW.line, style: StrokeStyle(lineWidth: 1.5, dash: [4, 4]))
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 14))
-        }
-        .buttonStyle(.plain)
-    }
-
-    @ViewBuilder
-    private func errorView(_ msg: String) -> some View {
-        VStack(spacing: 12) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 28)).foregroundStyle(PW.guards)
-            Text("Can't reach PitWall server")
-                .font(.system(size: 16, weight: .semibold)).foregroundStyle(PW.silver)
-            Text(msg).font(.system(size: 12)).foregroundStyle(PW.silverDim)
-                .multilineTextAlignment(.center)
-            Button("Retry") { Task { await vm.load() } }
-                .font(.system(size: 14, weight: .semibold))
-                .padding(.horizontal, 16).padding(.vertical, 8)
-                .background(PW.guards)
-                .foregroundStyle(PW.silver)
-                .clipShape(Capsule())
-        }
-        .padding(40)
     }
 }
 
@@ -128,27 +180,34 @@ private struct NewNodeSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    TextField("Name (e.g. Tom's House)", text: $name)
-                }
-                Section("Type") {
-                    Picker("Type", selection: $kind) {
-                        Text("Location").tag(LobbyNode.Kind.location)
-                        Text("Organization").tag(LobbyNode.Kind.org)
+            ZStack {
+                PW.carbon.ignoresSafeArea()
+                Form {
+                    Section {
+                        TextField("Name (e.g. Tom's House)", text: $name)
                     }
-                    .pickerStyle(.segmented)
-                    Text(kind == .location
-                         ? "A single venue with simulators"
-                         : "A group of venues (multi-location only)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Section("Type") {
+                        Picker("Type", selection: $kind) {
+                            Text("Location").tag(LobbyNode.Kind.location)
+                            Text("Organization").tag(LobbyNode.Kind.org)
+                        }
+                        .pickerStyle(.segmented)
+                        Text(kind == .location
+                             ? "A single venue with simulators"
+                             : "A group of venues (multi-location only)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    if let error {
+                        Text(error).foregroundStyle(.red).font(.system(size: 12))
+                    }
                 }
-                if let error {
-                    Text(error).foregroundStyle(.red).font(.system(size: 12))
-                }
+                .scrollContentBackground(.hidden)
             }
             .navigationTitle("Add Location")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
