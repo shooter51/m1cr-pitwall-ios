@@ -14,9 +14,11 @@ struct RaceControlView: View {
             if let state = viewModel.liveState {
                 liveLayout(state: state)
             } else {
-                Text("Waiting for live data…")
-                    .font(.system(size: 14, design: .monospaced))
+                Text("No active race session. Start a session on the server to see live timing.")
+                    .font(.system(size: 14))
                     .foregroundStyle(PW.silverDim)
+                    .multilineTextAlignment(.center)
+                    .padding(32)
             }
         }
         .navigationTitle("Race Control")
@@ -41,7 +43,7 @@ struct RaceControlView: View {
                 Button {
                     Task { await postToParent() }
                 } label: {
-                    Label(posted ? "Posted" : "Post to Parent", systemImage: posted ? "checkmark.circle.fill" : "arrow.up.right.square")
+                    Label(posted ? "Shared" : "Share to Race Wall", systemImage: posted ? "checkmark.circle.fill" : "arrow.up.right.square")
                 }
                 .disabled(posting || posted)
             }
@@ -58,7 +60,7 @@ struct RaceControlView: View {
         let body: [String: Any] = [
             "track_id":      state.track.id,
             "track_name":    state.track.name,
-            "vehicle_class": "GT3",   // refine later: derive from current session
+            "vehicle_class": "Mixed",
             "slot_total":    state.rigs.count,
             "slot_open":     max(0, state.rigs.count - state.rigs.filter { $0.status == .occupied }.count),
         ]

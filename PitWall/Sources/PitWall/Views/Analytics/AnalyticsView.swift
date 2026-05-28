@@ -23,6 +23,22 @@ struct AnalyticsView: View {
             if isLoading && sessions.isEmpty {
                 ProgressView()
                     .tint(PW.guards)
+            } else if let errorMsg = error, sessions.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 28)).foregroundStyle(PW.guards)
+                    Text(errorMsg)
+                        .font(.system(size: 14))
+                        .foregroundStyle(PW.silverDim)
+                        .multilineTextAlignment(.center)
+                    Button("Retry") { Task { await loadData() } }
+                        .font(.system(size: 14, weight: .semibold))
+                        .padding(.horizontal, 16).padding(.vertical, 8)
+                        .background(PW.guards)
+                        .foregroundStyle(PW.silver)
+                        .clipShape(Capsule())
+                }
+                .padding(40)
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: PW.sectionSpacing) {
@@ -35,6 +51,7 @@ struct AnalyticsView: View {
                     }
                     .padding(PW.cardPadding)
                 }
+                .refreshable { await loadData() }
             }
         }
         .navigationTitle("Analytics")
@@ -68,8 +85,7 @@ struct AnalyticsView: View {
 
         return ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: PW.gridGap) {
-                // TODO: Fetch session price from backend config instead of hardcoding $35.
-                KPIHeroCard(label: "REVENUE", value: String(format: "$%.0f", revenue), accent: PW.ok)
+                KPIHeroCard(label: "EST. REVENUE", value: String(format: "$%.0f", revenue), accent: PW.ok, footnote: "Based on $35/session estimate")
                 KPIHeroCard(label: "DRIVERS", value: "\(driverCount)", accent: PW.silver)
                 KPIHeroCard(label: "LAPS", value: "\(laps.count)", accent: PW.info)
                 KPIHeroCard(label: "AVG SESSION", value: "\(avgSession)m", accent: PW.silver)
@@ -228,7 +244,7 @@ struct AnalyticsView: View {
 
     private var equipmentHealthSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            sectionHeader("EQUIPMENT HEALTH")
+            sectionHeader("RIG STATUS")
 
             let rigs = viewModel.liveState?.rigs ?? []
 
@@ -248,31 +264,16 @@ struct AnalyticsView: View {
     }
 
     private func rigHealthCard(rig: LiveRig) -> some View {
-        let health = healthScore(rig: rig)
-        let color: Color = health >= 80 ? PW.ok : (health >= 50 ? PW.warn : PW.guards)
+        let color = statusColor(rig.status)
 
         return VStack(alignment: .leading, spacing: 6) {
             Text(rig.label.uppercased())
                 .font(.system(size: 10, weight: .bold, design: .monospaced))
                 .foregroundStyle(PW.silver)
 
-            Text("\(health)%")
-                .font(.system(size: 20, weight: .bold, design: .monospaced))
-                .foregroundStyle(color)
-
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Rectangle().fill(PW.panel2)
-                    Rectangle()
-                        .fill(color)
-                        .frame(width: geo.size.width * (Double(health) / 100.0))
-                }
-            }
-            .frame(height: 4)
-
             Text(rig.status.rawValue.uppercased())
-                .font(.system(size: 9, design: .monospaced))
-                .foregroundStyle(statusColor(rig.status))
+                .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                .foregroundStyle(color)
         }
         .padding(10)
         .background(PW.panel2)
@@ -383,7 +384,7 @@ struct AnalyticsView: View {
         } catch let e as APIError {
             switch e {
             case .notAttached:
-                error = "No Mobile Command attached"
+                error = "Not connected to a location. Go back and select a location first."
             case .serverError(401, _), .serverError(403, _):
                 error = "Authentication required"
             default:
@@ -401,6 +402,7 @@ struct KPIHeroCard: View {
     let label: String
     let value: String
     var accent: Color = PW.silver
+    var footnote: String? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -410,6 +412,11 @@ struct KPIHeroCard: View {
             Text(value)
                 .font(.system(size: 28, weight: .bold, design: .monospaced))
                 .foregroundStyle(accent)
+            if let footnote {
+                Text(footnote)
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundStyle(PW.silverDim)
+            }
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)

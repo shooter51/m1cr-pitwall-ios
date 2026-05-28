@@ -14,10 +14,10 @@ struct ChipView: View {
 
     private var label: String {
         switch status {
-        case .available: return "AVAIL"
+        case .available: return "AVAILABLE"
         case .occupied: return "ACTIVE"
-        case .maintenance: return "MAINT"
-        case .offline: return "OFFLN"
+        case .maintenance: return "MAINTENANCE"
+        case .offline: return "OFFLINE"
         }
     }
 

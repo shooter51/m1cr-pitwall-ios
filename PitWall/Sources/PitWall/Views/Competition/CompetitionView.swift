@@ -39,6 +39,7 @@ struct CompetitionView: View {
                         }
                         .padding(.bottom, PW.sectionSpacing)
                     }
+                    .refreshable { await competitionVM?.loadCompetitions() }
                 }
             }
         }
@@ -66,7 +67,7 @@ struct CompetitionView: View {
             competitionVM = vm
             await vm.loadCompetitions()
         }
-        .alert("Error", isPresented: Binding(
+        .alert("Competition Error", isPresented: Binding(
             get: { competitionVM?.error != nil },
             set: { if !$0 { competitionVM?.error = nil } }
         )) {
@@ -114,10 +115,11 @@ struct CompetitionView: View {
                 .sorted { ($0.position ?? 999) < ($1.position ?? 999) } ?? []
 
             if occupied.isEmpty {
-                Text("No active drivers")
-                    .font(.system(size: 13, design: .monospaced))
+                Text("No drivers on track. Standings will appear when drivers start racing.")
+                    .font(.system(size: 13))
                     .foregroundStyle(PW.silverDim)
                     .frame(maxWidth: .infinity, alignment: .center)
+                    .multilineTextAlignment(.center)
                     .padding(.vertical, 24)
             } else {
                 ForEach(occupied) { rig in
@@ -340,7 +342,7 @@ struct CreateCompetitionSheet: View {
 
     @State private var name = ""
     @State private var type = Competition.CompetitionType.fastestLap
-    @State private var trackId = "brands-hatch"
+    @State private var trackId = ""
     @State private var vehicleClass = "GT3"
     @State private var prizeDescription = ""
     @State private var maxParticipantsText = ""
@@ -368,7 +370,7 @@ struct CreateCompetitionSheet: View {
                             .colorScheme(.dark)
                         }
 
-                        formField(label: "TRACK", placeholder: "brands-hatch") {
+                        formField(label: "TRACK NAME", placeholder: "Laguna Seca") {
                             TextField("", text: $trackId)
                                 .textFieldStyle(PWTextFieldStyle())
                         }

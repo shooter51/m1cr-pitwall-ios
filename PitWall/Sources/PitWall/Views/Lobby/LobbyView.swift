@@ -62,6 +62,7 @@ struct LobbyView: View {
             }
             .padding(20)
         }
+        .refreshable { await vm.load() }
     }
 
     private var header: some View {
@@ -122,7 +123,6 @@ private struct NewNodeSheet: View {
     @Environment(LobbyViewModel.self) private var vm
     @Environment(\.dismiss) private var dismiss
     @State private var name = ""
-    @State private var slug = ""
     @State private var kind: LobbyNode.Kind = .location
     @State private var error: String?
 
@@ -131,14 +131,6 @@ private struct NewNodeSheet: View {
             Form {
                 Section {
                     TextField("Name (e.g. Tom's House)", text: $name)
-                        .onChange(of: name) { _, newValue in
-                            if slug.isEmpty || slug == kebab(name) {
-                                slug = kebab(newValue)
-                            }
-                        }
-                    TextField("Short ID (auto-generated)", text: $slug)
-                        .autocorrectionDisabled(true)
-                        .foregroundStyle(PW.silverDim)
                 }
                 Section("Type") {
                     Picker("Type", selection: $kind) {
@@ -147,8 +139,8 @@ private struct NewNodeSheet: View {
                     }
                     .pickerStyle(.segmented)
                     Text(kind == .location
-                         ? "A location has simulators and runs races."
-                         : "An organization groups multiple locations together.")
+                         ? "A single venue with simulators"
+                         : "A group of venues (multi-location only)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -163,13 +155,14 @@ private struct NewNodeSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Create") { Task { await create() } }
-                        .disabled(name.isEmpty || slug.isEmpty)
+                        .disabled(name.isEmpty)
                 }
             }
         }
     }
 
     private func create() async {
+        let slug = kebab(name)
         do {
             _ = try await vm.createNode(name: name, slug: slug, kind: kind)
             dismiss()

@@ -3,8 +3,6 @@ import SwiftUI
 struct PostingTile: View {
     let posting: RacePosting
     let onJoin: () -> Void
-    let onSpectate: () -> Void
-    let onPushToDisplay: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -94,15 +92,6 @@ struct PostingTile: View {
                 .foregroundStyle(PW.silver)
                 .clipShape(Capsule())
                 .buttonStyle(.plain)
-        } else {
-            Menu {
-                Button("Spectate", action: onSpectate)
-                Button("Push to Display", action: onPushToDisplay)
-            } label: {
-                Image(systemName: "ellipsis.circle")
-                    .font(.system(size: 18))
-                    .foregroundStyle(PW.silverMid)
-            }
         }
     }
 }

@@ -12,46 +12,53 @@ struct CreateBackendSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Bring up a new backend")
+                        Text("Set Up a New Server")
                             .font(.system(size: 22, weight: .bold))
                             .foregroundStyle(PW.silver)
-                        Text("PitWall's server is a small Docker stack on a Linux VPS. You provision it once, then connect this app to it.")
+                        Text("PitWall runs on a server that your IT team sets up. Follow these steps to get started.")
                             .font(.system(size: 13))
                             .foregroundStyle(PW.silverMid)
                     }
 
                     step(
                         n: 1,
-                        title: "Provision a Linux VPS",
-                        body: "8 vCPU / 32 GiB / 500 GiB NVMe is plenty. Hetzner CCX, Vultr HF, or any provider you trust."
+                        title: "Get a server",
+                        body: "Your IT team needs a Linux server (cloud or on-premises)."
                     )
                     step(
                         n: 2,
-                        title: "Point DNS",
-                        body: "Set `pitwall.<your-domain>` and `*.pitwall.<your-domain>` at the VPS public IP. Caddy will handle TLS automatically (Cloudflare DNS-01 wildcard)."
+                        title: "Set up a web address",
+                        body: "Point a domain name at the server."
                     )
                     step(
                         n: 3,
-                        title: "Create a Postgres database",
-                        body: "On your Postgres server: `CREATE DATABASE pitwall; CREATE ROLE pitwall_app …;`  Enable `pgcrypto` and allow the VPS IP in `pg_hba.conf` over SSL."
+                        title: "Set up the database",
+                        body: "Install and configure the database."
                     )
                     step(
                         n: 4,
-                        title: "Clone, configure, bootstrap",
-                        body: "git clone github.com/shooter51/m1cr-pitwall  →  cd infra  →  cp .env.example .env  →  fill in PITWALL_DB_URL, generate PITWALL_CLIENT_KEY (openssl rand -base64 48), then ./scripts/bootstrap.sh"
+                        title: "Install PitWall",
+                        body: "Run the PitWall installer on the server."
                     )
                     step(
                         n: 5,
-                        title: "Connect this app",
-                        body: "Tap 'I have a backend' below and paste your Lobby URL + the client key you generated. You only do this once per device."
+                        title: "Connect this iPad",
+                        body: "Use the server address and access key from step 4."
                     )
+
+                    Text("Server setup requires technical knowledge. Contact your IT team or PitWall support for help.")
+                        .font(.system(size: 12))
+                        .foregroundStyle(PW.silverMid)
+                        .padding(12)
+                        .background(PW.panel2)
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(PW.line, lineWidth: 1))
 
                     HStack {
                         Spacer()
                         Button {
                             showJoin = true
                         } label: {
-                            Text("I have a backend — connect")
+                            Text("I have a server — connect")
                                 .font(.system(size: 15, weight: .semibold))
                                 .padding(.horizontal, 18).padding(.vertical, 12)
                                 .background(PW.guards)
@@ -66,7 +73,7 @@ struct CreateBackendSheet: View {
                 .padding(24)
             }
             .background(PW.carbon)
-            .navigationTitle("Create backend")
+            .navigationTitle("Set Up a New Server")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif

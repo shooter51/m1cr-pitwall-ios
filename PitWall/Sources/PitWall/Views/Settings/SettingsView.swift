@@ -4,6 +4,7 @@ struct SettingsView: View {
     @Environment(BackendStore.self) private var store
     @Environment(MCClient.self) private var mc
     @State private var addingBackend = false
+    @State private var showDisconnectConfirm = false
 
     var body: some View {
         ZStack {
@@ -20,10 +21,10 @@ struct SettingsView: View {
                                 .foregroundStyle(PW.silverDim)
                         }
                     } else {
-                        Text("No backend connected").foregroundStyle(PW.silverDim)
+                        Text("No server connected").foregroundStyle(PW.silverDim)
                     }
                 } header: {
-                    Text("Current Backend").foregroundStyle(PW.silverDim)
+                    Text("Current Server").foregroundStyle(PW.silverDim)
                 }
 
                 // Other backends — switch with one tap.
@@ -53,34 +54,33 @@ struct SettingsView: View {
                             for i in idx { store.remove(id: store.backends[i].id) }
                         }
                     } header: {
-                        Text("Saved Backends").foregroundStyle(PW.silverDim)
+                        Text("Saved Servers").foregroundStyle(PW.silverDim)
                     }
                 }
 
                 Section {
-                    Button("Add a backend…") { addingBackend = true }
+                    Button("Add a server…") { addingBackend = true }
                         .foregroundStyle(PW.silver)
-                    if let current = store.current {
-                        Button("Remove current backend", role: .destructive) {
-                            store.remove(id: current.id)
-                            mc.detach()
+                    if store.current != nil {
+                        Button("Disconnect from server", role: .destructive) {
+                            showDisconnectConfirm = true
                         }
                     }
                 }
 
-                // Current Mobile Command attachment
+                // Current location attachment
                 Section {
                     HStack {
                         Label(mc.attached?.name ?? "—", systemImage: "rectangle.connected.to.line.below")
                             .foregroundStyle(PW.silver)
                         Spacer()
-                        Button("Detach", role: .destructive) {
+                        Button("Disconnect", role: .destructive) {
                             mc.detach()
                         }
                         .disabled(mc.attached == nil)
                     }
                 } header: {
-                    Text("Mobile Command").foregroundStyle(PW.silverDim)
+                    Text("Connected Location").foregroundStyle(PW.silverDim)
                 }
 
                 // Appearance
@@ -113,6 +113,17 @@ struct SettingsView: View {
         #endif
         .sheet(isPresented: $addingBackend) {
             JoinBackendSheet().presentationDetents([.medium, .large])
+        }
+        .alert("Disconnect from server?", isPresented: $showDisconnectConfirm) {
+            Button("Cancel", role: .cancel) {}
+            Button("Disconnect", role: .destructive) {
+                if let current = store.current {
+                    store.remove(id: current.id)
+                    mc.detach()
+                }
+            }
+        } message: {
+            Text("You'll need the server address and access key to reconnect.")
         }
     }
 

@@ -4,6 +4,7 @@ struct AIOperatorView: View {
     @Environment(MCClient.self) private var mc
     @State private var vm: AIOperatorViewModel?
     @State private var scrollProxy: ScrollViewProxy?
+    @State private var showClearConfirm = false
 
     var body: some View {
         NavigationStack {
@@ -21,10 +22,10 @@ struct AIOperatorView: View {
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
-                if let vm {
+                if vm != nil {
                     ToolbarItem(placement: .primaryAction) {
                         Button {
-                            vm.clearHistory()
+                            showClearConfirm = true
                         } label: {
                             Image(systemName: "trash")
                                 .foregroundStyle(PW.silverDim)
@@ -46,6 +47,12 @@ struct AIOperatorView: View {
             if let vm {
                 ApprovalSheet(message: msg, vm: vm)
             }
+        }
+        .alert("Clear conversation?", isPresented: $showClearConfirm) {
+            Button("Cancel", role: .cancel) {}
+            Button("Clear", role: .destructive) { vm?.clearHistory() }
+        } message: {
+            Text("This will remove all messages in this session.")
         }
     }
 
@@ -294,6 +301,13 @@ struct MessageBubble: View {
 
 // MARK: - Tool chip
 
+private func friendlyToolName(_ raw: String) -> String {
+    raw.replacingOccurrences(of: "pitwall_", with: "")
+       .replacingOccurrences(of: "ams2_", with: "")
+       .replacingOccurrences(of: "_", with: " ")
+       .capitalized
+}
+
 struct ToolChip: View {
     let tool: ToolCall
 
@@ -302,7 +316,7 @@ struct ToolChip: View {
             Image(systemName: statusIcon)
                 .font(.system(size: 9))
                 .foregroundStyle(statusColor)
-            Text(tool.name.uppercased().replacingOccurrences(of: "_", with: " "))
+            Text(friendlyToolName(tool.name).uppercased())
                 .font(.system(size: 9, weight: .bold, design: .monospaced))
                 .foregroundStyle(statusColor)
         }

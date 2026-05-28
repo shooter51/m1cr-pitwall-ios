@@ -45,7 +45,7 @@ struct BackendPickerView: View {
                     .foregroundStyle(PW.silver)
             }
             Text("PitWall").font(.system(size: 36, weight: .bold)).foregroundStyle(PW.silver)
-            Text("Pick a PitWall network to connect to.")
+            Text("Connect to your venue's PitWall server.")
                 .font(.system(size: 15))
                 .foregroundStyle(PW.silverMid)
                 .multilineTextAlignment(.center)
@@ -55,15 +55,15 @@ struct BackendPickerView: View {
     private var buttons: some View {
         VStack(spacing: 14) {
             bigButton(
-                title: "Join an existing backend",
-                subtitle: "Enter a lobby URL and key shared by your network's host.",
+                title: "Connect to a Server",
+                subtitle: "Enter the server address and access key from your venue admin.",
                 icon: "link",
                 tint: PW.guards
             ) { sheet = .join }
 
             bigButton(
-                title: "Create a new backend",
-                subtitle: "Spin up your own family-network server. Shows you how.",
+                title: "Set Up a New Server",
+                subtitle: "Deploy your own PitWall server. We'll walk you through it.",
                 icon: "plus.square",
                 tint: PW.info
             ) { sheet = .create }
@@ -96,7 +96,7 @@ struct BackendPickerView: View {
     @ViewBuilder
     private var savedBackendsStrip: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Saved backends")
+            Text("Saved Servers")
                 .font(.system(size: 11, weight: .semibold))
                 .tracking(0.4)
                 .foregroundStyle(PW.silverDim)

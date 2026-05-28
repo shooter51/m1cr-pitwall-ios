@@ -28,22 +28,41 @@ struct RaceWallView: View {
 
     @ViewBuilder
     private var content: some View {
-        if let vm, !vm.postings.isEmpty {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    header
-                    LazyVGrid(columns: columns, spacing: 16) {
-                        ForEach(vm.postings) { posting in
-                            PostingTile(
-                                posting: posting,
-                                onJoin:        { joinSheet = posting },
-                                onSpectate:    { /* spectate UI: TBD */ },
-                                onPushToDisplay: { /* display picker: TBD */ }
-                            )
+        if let vm {
+            if let error = vm.error {
+                VStack(spacing: 12) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 28)).foregroundStyle(PW.guards)
+                    Text(error)
+                        .font(.system(size: 14))
+                        .foregroundStyle(PW.silverDim)
+                        .multilineTextAlignment(.center)
+                    Button("Retry") { Task { await vm.load() } }
+                        .font(.system(size: 14, weight: .semibold))
+                        .padding(.horizontal, 16).padding(.vertical, 8)
+                        .background(PW.guards)
+                        .foregroundStyle(PW.silver)
+                        .clipShape(Capsule())
+                }
+                .padding(40)
+            } else if !vm.postings.isEmpty {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        header
+                        LazyVGrid(columns: columns, spacing: 16) {
+                            ForEach(vm.postings) { posting in
+                                PostingTile(
+                                    posting: posting,
+                                    onJoin: { joinSheet = posting }
+                                )
+                            }
                         }
                     }
+                    .padding(20)
                 }
-                .padding(20)
+                .refreshable { await vm.load() }
+            } else {
+                emptyState
             }
         } else {
             emptyState
@@ -75,6 +94,7 @@ private struct JoinSheet: View {
     let posting: RacePosting
     let onJoin: (String) -> Void
     @State private var name = ""
+    @State private var isJoining = false
 
     var body: some View {
         VStack(spacing: 16) {
@@ -82,9 +102,19 @@ private struct JoinSheet: View {
             TextField("Driver name", text: $name)
                 .textFieldStyle(.roundedBorder)
                 .padding(.horizontal, 20)
-            Button("Join") { onJoin(name) }
-                .buttonStyle(.borderedProminent)
-                .disabled(name.isEmpty)
+                .disabled(isJoining)
+            Button {
+                isJoining = true
+                onJoin(name)
+            } label: {
+                if isJoining {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Text("Join")
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(name.isEmpty || isJoining)
         }
         .padding(20)
     }

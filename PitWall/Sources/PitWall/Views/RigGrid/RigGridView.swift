@@ -55,7 +55,7 @@ struct RigGridView: View {
         HStack(spacing: 16) {
             KPITile(label: "ACTIVE", value: "\(viewModel.activeSessionCount)")
             KPITile(label: "AVAILABLE", value: "\(viewModel.availableRigCount)")
-            KPITile(label: "BEST LAP", value: formatLap(viewModel.bestLapToday))
+            KPITile(label: "BEST LAP TODAY", value: formatLap(viewModel.bestLapToday))
             Spacer()
             serverStatusPill
             connectionIndicator
@@ -78,9 +78,9 @@ struct RigGridView: View {
         HStack(spacing: 4) {
             Circle()
                 .fill(viewModel.connectionStatus == .connected ? PW.ok : PW.guards)
-                .frame(width: 6, height: 6)
+                .frame(width: 8, height: 8)
             Text(viewModel.connectionStatus.rawValue.uppercased())
-                .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                .font(.system(size: 12, weight: .semibold, design: .monospaced))
                 .foregroundStyle(PW.silverDim)
         }
     }
@@ -104,9 +104,17 @@ struct RigGridView: View {
                 Button("Retry") { viewModel.connect() }
                     .buttonStyle(PrimaryButtonStyle())
             } else {
-                Text("No live data")
-                    .font(.system(size: 14, design: .monospaced))
+                Text("No simulators found. Make sure your rigs are powered on and connected to the server.")
+                    .font(.system(size: 14))
                     .foregroundStyle(PW.silverDim)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+                Button("Refresh") { viewModel.connect() }
+                    .font(.system(size: 14, weight: .semibold))
+                    .padding(.horizontal, 16).padding(.vertical, 8)
+                    .background(PW.guards)
+                    .foregroundStyle(PW.silver)
+                    .clipShape(Capsule())
             }
             Spacer()
         }
@@ -146,9 +154,6 @@ struct RigDetailSheet: View {
                         LabeledValue(label: "LAST LAP", value: formatLap(lastLap))
                     }
                     Spacer()
-                    Text("Full detail view — Phase 2")
-                        .font(.system(size: 12))
-                        .foregroundStyle(PW.silverDim)
                 }
                 .padding(PW.cardPadding)
             }

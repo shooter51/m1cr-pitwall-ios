@@ -79,12 +79,12 @@ struct ServerControlView: View {
             isPresented: $showConfirmStart,
             titleVisibility: .visible
         ) {
-            Button("Start Server", role: .destructive) {
+            Button("Start Server") {
                 Task { await startServer() }
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This will start the EC2 instance. It may take 1-2 minutes to become available.")
+            Text("This will start the game server. It may take 1-2 minutes to become available.")
         }
         .task { await refreshStatus() }
     }
@@ -116,7 +116,7 @@ struct ServerControlView: View {
         do {
             serverStatus = try await resolvedAPI().serverStatus()
         } catch {
-            self.error = error.localizedDescription
+            self.error = "Could not reach the server: \(error.localizedDescription)"
         }
         isLoading = false
     }
@@ -127,7 +127,7 @@ struct ServerControlView: View {
         do {
             serverStatus = try await resolvedAPI().startServer()
         } catch {
-            self.error = error.localizedDescription
+            self.error = "Could not reach the server: \(error.localizedDescription)"
         }
         isLoading = false
     }

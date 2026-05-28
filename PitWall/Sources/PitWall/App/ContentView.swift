@@ -51,9 +51,28 @@ struct ContentView: View {
     @ViewBuilder
     private var attachedView: some View {
         NavigationSplitView {
-            List(tabsForKind, id: \.self, selection: $selectedTab) { tab in
-                Label(tab.rawValue, systemImage: tab.icon)
-                    .tag(tab)
+            List(selection: $selectedTab) {
+                Section("Operations") {
+                    ForEach([Tab.rigs, .raceControl, .competition], id: \.self) { tab in
+                        if tabsForKind.contains(tab) {
+                            Label(tab.rawValue, systemImage: tab.icon).tag(tab)
+                        }
+                    }
+                }
+                Section("Media") {
+                    ForEach([Tab.broadcast, .raceWall], id: \.self) { tab in
+                        if tabsForKind.contains(tab) {
+                            Label(tab.rawValue, systemImage: tab.icon).tag(tab)
+                        }
+                    }
+                }
+                Section("Insights") {
+                    Label(Tab.analytics.rawValue, systemImage: Tab.analytics.icon).tag(Tab.analytics)
+                }
+                Section("System") {
+                    Label(Tab.server.rawValue, systemImage: Tab.server.icon).tag(Tab.server)
+                    Label(Tab.settings.rawValue, systemImage: Tab.settings.icon).tag(Tab.settings)
+                }
             }
             .listStyle(.sidebar)
             .navigationTitle(mc.attached?.name ?? "PitWall")
@@ -62,6 +81,7 @@ struct ContentView: View {
                     Button { showAISheet = true } label: {
                         Image(systemName: "sparkles")
                     }
+                    .accessibilityLabel("AI Assistant")
                 }
             }
         } detail: {

@@ -29,11 +29,11 @@ struct RigCardView: View {
                 if let driver = rig.driverName {
                     HStack {
                         Text("DRIVER")
-                            .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                            .font(.system(size: 11, weight: .semibold, design: .monospaced))
                             .foregroundStyle(PW.silverDim)
                         Spacer()
                         Text(driver.uppercased())
-                            .font(.system(size: 11, weight: .medium, design: .monospaced))
+                            .font(.system(size: 13, weight: .medium, design: .monospaced))
                             .foregroundStyle(PW.silver)
                             .lineLimit(1)
                     }
@@ -54,12 +54,12 @@ struct RigCardView: View {
                     Spacer()
                     if let lap = rig.currentLap {
                         Text("LAP \(lap)")
-                            .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                            .font(.system(size: 11, weight: .semibold, design: .monospaced))
                             .foregroundStyle(PW.silverDim)
                     }
                     if let pit = rig.pitStatus, pit != .onTrack {
                         Text(pit.rawValue.uppercased().replacingOccurrences(of: "_", with: " "))
-                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .font(.system(size: 11, weight: .bold, design: .monospaced))
                             .foregroundStyle(PW.warn)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
@@ -85,18 +85,18 @@ struct RigCardView: View {
     private func lapRow(label: String, ms: Int, highlight: Bool) -> some View {
         HStack {
             Text(label)
-                .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                .font(.system(size: 11, weight: .semibold, design: .monospaced))
                 .foregroundStyle(PW.silverDim)
             Spacer()
             Text(formatLap(ms))
-                .font(.system(size: 12, weight: highlight ? .bold : .regular, design: .monospaced))
+                .font(.system(size: 13, weight: highlight ? .bold : .regular, design: .monospaced))
                 .foregroundStyle(highlight ? PW.ok : PW.silver)
         }
     }
 
     private func positionBadge(_ pos: Int) -> some View {
         Text("P\(pos)")
-            .font(.system(size: 11, weight: .bold, design: .monospaced))
+            .font(.system(size: 13, weight: .bold, design: .monospaced))
             .foregroundStyle(pos == 1 ? PW.guards : PW.silverMid)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)

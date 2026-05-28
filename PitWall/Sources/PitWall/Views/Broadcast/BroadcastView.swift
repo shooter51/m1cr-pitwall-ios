@@ -27,34 +27,53 @@ struct BroadcastView: View {
         ZStack {
             PW.carbon.ignoresSafeArea()
 
-            HStack(spacing: 0) {
-                // Left column — controls
-                ScrollView {
-                    VStack(alignment: .leading, spacing: PW.sectionSpacing) {
-                        directorModeSection
-                        scenePickerSection
-                        cameraTypeSection
-                        if let error = saveError {
-                            Text(error)
-                                .font(.system(size: 12))
-                                .foregroundStyle(PW.guards)
-                        }
-                    }
-                    .padding(PW.cardPadding)
+            VStack(spacing: 0) {
+                // Preview banner
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 13))
+                        .foregroundStyle(PW.warn)
+                    Text("Broadcast controls are preview only — changes are not sent to the server.")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(PW.warn)
+                    Spacer()
                 }
-                .frame(width: 280)
-                .background(PW.panel)
+                .padding(.horizontal, PW.cardPadding)
+                .padding(.vertical, 10)
+                .background(PW.warn.opacity(0.1))
+                .overlay(alignment: .bottom) {
+                    Rectangle().fill(PW.warn.opacity(0.3)).frame(height: 1)
+                }
 
-                Divider().background(PW.line)
-
-                // Right column — interest scores + events
-                ScrollView {
-                    VStack(alignment: .leading, spacing: PW.sectionSpacing) {
-                        interestScoresSection
-                        recentEventsSection
-                        displayOutputSection
+                HStack(spacing: 0) {
+                    // Left column — controls
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: PW.sectionSpacing) {
+                            directorModeSection
+                            scenePickerSection
+                            cameraTypeSection
+                            if let error = saveError {
+                                Text(error)
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(PW.guards)
+                            }
+                        }
+                        .padding(PW.cardPadding)
                     }
-                    .padding(PW.cardPadding)
+                    .frame(width: 280)
+                    .background(PW.panel)
+
+                    Divider().background(PW.line)
+
+                    // Right column — interest scores + events
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: PW.sectionSpacing) {
+                            interestScoresSection
+                            recentEventsSection
+                            displayOutputSection
+                        }
+                        .padding(PW.cardPadding)
+                    }
                 }
             }
         }
@@ -184,7 +203,7 @@ struct BroadcastView: View {
 
     private var interestScoresSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            sectionHeader("INTEREST SCORES")
+            sectionHeader("INTEREST SCORES — ESTIMATED (approximate)")
 
             let rigs = viewModel.liveState?.rigs.filter { $0.status == .occupied } ?? []
 

@@ -17,18 +17,18 @@ struct JoinBackendSheet: View {
             Form {
                 Section {
                     TextField("Friendly name (e.g. Tom's House)", text: $name)
-                    TextField("Lobby URL", text: $urlString)
+                    TextField("Server Address", text: $urlString)
                         .autocorrectionDisabled(true)
                         #if os(iOS)
                         .textInputAutocapitalization(.never)
                         .keyboardType(.URL)
                         #endif
-                    SecureField("Client key", text: $clientKey)
+                    SecureField("Access Key", text: $clientKey)
                         .autocorrectionDisabled(true)
                 } header: {
-                    Text("Backend")
+                    Text("Server Details")
                 } footer: {
-                    Text("Lobby URL looks like https://pitwall.example.com — the base URL of your PitWall server. The client key is the shared secret from your backend's `.env`.")
+                    Text("Your server address looks like https://pitwall.example.com. The access key was set up when the server was installed — ask your admin if you don't have it.")
                 }
 
                 if let errorMessage {
@@ -39,7 +39,7 @@ struct JoinBackendSheet: View {
                     }
                 }
             }
-            .navigationTitle("Join backend")
+            .navigationTitle("Connect to Server")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
@@ -80,19 +80,19 @@ struct JoinBackendSheet: View {
         do {
             let (_, response) = try await URLSession.shared.data(for: req)
             guard let http = response as? HTTPURLResponse else {
-                errorMessage = "No HTTP response"
+                errorMessage = "Couldn't connect to the server. Check that the address is correct."
                 return
             }
             if http.statusCode == 401 {
-                errorMessage = "Client key rejected by server"
+                errorMessage = "Access key not accepted. Double-check the key and try again."
                 return
             }
             if !(200..<300).contains(http.statusCode) {
-                errorMessage = "Server returned \(http.statusCode)"
+                errorMessage = "Server error (code \(http.statusCode)). Try again or contact your admin."
                 return
             }
         } catch {
-            errorMessage = "Couldn't reach \(url.host ?? urlString) — \(error.localizedDescription)"
+            errorMessage = "Connection failed: \(error.localizedDescription)"
             return
         }
 

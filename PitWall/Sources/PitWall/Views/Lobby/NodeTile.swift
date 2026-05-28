@@ -9,6 +9,7 @@ struct NodeTile: View {
     var onDelete: (() -> Void)? = nil
 
     @State private var showRename = false
+    @State private var showDeleteConfirm = false
     @State private var newName = ""
 
     var body: some View {
@@ -39,8 +40,10 @@ struct NodeTile: View {
                     Label("Rename", systemImage: "pencil")
                 }
             }
-            if let onDelete {
-                Button(role: .destructive, action: onDelete) {
+            if onDelete != nil {
+                Button(role: .destructive) {
+                    showDeleteConfirm = true
+                } label: {
                     Label("Delete", systemImage: "trash")
                 }
             }
@@ -49,6 +52,12 @@ struct NodeTile: View {
             TextField("Name", text: $newName)
             Button("Cancel", role: .cancel) {}
             Button("Save") { onRename?(newName) }
+        }
+        .alert("Delete \(node.name)?", isPresented: $showDeleteConfirm) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive) { onDelete?() }
+        } message: {
+            Text("This will remove the location and all its data. This cannot be undone.")
         }
     }
 
@@ -59,9 +68,6 @@ struct NodeTile: View {
                 Text(node.name)
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(PW.silver)
-                Text(node.slug)
-                    .font(.system(size: 11, weight: .regular).monospaced())
-                    .foregroundStyle(PW.silverDim)
             }
             Spacer()
             statusDot
