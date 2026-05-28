@@ -14,8 +14,9 @@ final class BackendStore {
     private let backendsKey = "pitwall.backends.v1"
     private let currentKey  = "pitwall.backends.currentId.v1"
 
-    /// `defaultSeed` is consulted only on a totally empty store — provides the
-    /// M1 Circuit default that came from `Secrets.xcconfig` at build time.
+    /// `defaultSeed` provides the M1 Circuit default from `Secrets.xcconfig`.
+    /// On first launch it seeds the store. On subsequent launches it updates the
+    /// seed server's key and URL if they changed (e.g. after a new build).
     init(defaults: UserDefaults = .standard, defaultSeed: Backend? = nil) {
         self.defaults = defaults
 
@@ -28,7 +29,7 @@ final class BackendStore {
             persist([seed])
         } else {
             // Rehydrate clientKeys from Keychain.
-            let rehydrated = stored.map { backend -> Backend in
+            var rehydrated = stored.map { backend -> Backend in
                 if let key = KeychainHelper.read(account: "\(backend.id.uuidString).clientKey") {
                     var copy = backend
                     copy.clientKey = key
@@ -36,6 +37,21 @@ final class BackendStore {
                 }
                 return backend
             }
+
+            // If the build-time seed changed (new key or URL), update the
+            // matching server entry so operators always get the latest config
+            // without needing to delete app data.
+            var needsPersist = false
+            if let seed = defaultSeed,
+               let idx = rehydrated.firstIndex(where: { $0.name == seed.name }) {
+                var updated = rehydrated[idx]
+                updated.clientKey = seed.clientKey
+                updated.lobbyURL = seed.lobbyURL
+                rehydrated[idx] = updated
+                _ = KeychainHelper.write(seed.clientKey, account: "\(updated.id.uuidString).clientKey")
+                needsPersist = true
+            }
+
             self.backends = rehydrated
             if let currentRaw = defaults.string(forKey: currentKey),
                let uuid = UUID(uuidString: currentRaw),
@@ -44,6 +60,8 @@ final class BackendStore {
             } else {
                 self.currentId = rehydrated.first?.id
             }
+
+            if needsPersist { persist(rehydrated) }
         }
     }
 
