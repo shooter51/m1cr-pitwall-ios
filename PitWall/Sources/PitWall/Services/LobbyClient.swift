@@ -38,12 +38,12 @@ actor LobbyClient {
     }
 
     func listNodes() async throws -> [LobbyNode] {
-        let req = try await buildRequest("GET", "/lobby/nodes")
+        let req = try await buildRequest("GET", "nodes")
         return try await execute(req, as: LobbyNodeList.self).nodes
     }
 
     func createNode(_ body: CreateNodeBody) async throws -> LobbyNode {
-        var req = try await buildRequest("POST", "/lobby/nodes")
+        var req = try await buildRequest("POST", "nodes")
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.httpBody = try encoder.encode(body)
         struct Wrapper: Decodable { let node: LobbyNode }
@@ -92,7 +92,7 @@ actor LobbyClient {
     nonisolated func eventStream() -> AsyncThrowingStream<LobbyEvent, Error> {
         AsyncThrowingStream { continuation in
             Task { @Sendable in
-                let url = await self.mc.lobbyURL.appendingPathComponent("lobby/events")
+                let url = await self.mc.lobbyURL.appendingPathComponent("events")
                 let key = await self.mc.clientKey
                 var request = URLRequest(url: url)
                 request.setValue("text/event-stream", forHTTPHeaderField: "Accept")

@@ -12,9 +12,11 @@ import CryptoKit
 /// PitWallAPI, LobbyClient, and SSEClient.
 final class PinnedURLSession: NSObject, URLSessionDelegate {
     static let shared: URLSession = {
-        let config = URLSessionConfiguration.default
-        let delegate = PinnedURLSession()
-        return URLSession(configuration: config, delegate: delegate, delegateQueue: nil)
+        // TLS is terminated at Cloudflare Tunnel edge — pinning to the origin
+        // cert is not meaningful since the edge cert rotates. Use default
+        // URLSession with standard certificate validation.
+        // Re-enable pinning when traffic goes direct to origin servers.
+        return URLSession.shared
     }()
 
     private override init() {}
@@ -83,7 +85,9 @@ final class PinnedURLSession: NSObject, URLSessionDelegate {
     ///   openssl pkey -pubin -outform DER |
     ///   openssl dgst -sha256 -binary | base64
     private static let pinnedHashes: Set<String> = [
-        // Leaf certificate (pitwall.m1circuit.com)
+        // Cloudflare edge certificate (traffic goes through CF Tunnel)
+        "2NxL34z7+aYbNUJXfTESiJ3puI3eQX3cmGmX8Fo43Fs=",
+        // Origin leaf certificate (pitwall.m1circuit.com direct)
         "/qQY5mwOP4uGjHOVESg5jQOT/wIPp2Rpl2qAWV6GVj0=",
         // Intermediate certificate (backup pin)
         "kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=",
