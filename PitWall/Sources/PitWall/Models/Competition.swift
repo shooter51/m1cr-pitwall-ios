@@ -9,12 +9,12 @@ struct Competition: Codable, Identifiable, Sendable, Equatable {
     let trackName: String
     let vehicleClass: String
     let vehicleLocked: String?
-    let rules: String?
-    let startsAt: Int?
-    let endsAt: Int?
+    let rules: AnyJSON?
+    let startsAt: String?
+    let endsAt: String?
     let maxParticipants: Int?
     let prizeDescription: String?
-    let createdAt: Int
+    let createdAt: String
 
     enum CompetitionType: String, Codable, Sendable {
         case fastestLap = "fastest_lap"

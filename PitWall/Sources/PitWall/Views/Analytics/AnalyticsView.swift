@@ -4,7 +4,7 @@ struct AnalyticsView: View {
     @Environment(DashboardViewModel.self) private var viewModel
     @Environment(MCClient.self) private var mc
     @State private var sessions: [Session] = []
-    @State private var laps: [LapTime] = []
+    @State private var laps: [LeaderboardEntry] = []
     @State private var isLoading = false
     @State private var error: String?
     @State private var api: PitWallAPI?
@@ -334,8 +334,9 @@ struct AnalyticsView: View {
         var hours: [Int: Int] = [:]
         for h in 9...22 { hours[h] = 0 }  // 9am to 10pm
 
+        let iso = ISO8601DateFormatter()
         for session in sessions {
-            let date = Date(timeIntervalSince1970: Double(session.startedAt))
+            guard let date = iso.date(from: session.startedAt) else { continue }
             let hour = Calendar.current.component(.hour, from: date)
             if (9...22).contains(hour) {
                 hours[hour, default: 0] += 1

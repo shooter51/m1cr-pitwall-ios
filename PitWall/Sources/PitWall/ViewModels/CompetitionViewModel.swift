@@ -30,8 +30,9 @@ final class CompetitionViewModel {
         isLoading = true
         defer { isLoading = false }
         do {
-            let newComp = try await api.createCompetition(params)
-            competitions.insert(newComp, at: 0)
+            _ = try await api.createCompetition(params)
+            // Reload full list after creation since the POST only returns partial data.
+            await loadCompetitions()
             return true
         } catch {
             self.error = error.localizedDescription

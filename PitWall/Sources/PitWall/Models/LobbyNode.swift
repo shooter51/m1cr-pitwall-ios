@@ -13,6 +13,28 @@ struct LobbyNode: Codable, Equatable, Identifiable, Hashable, Sendable {
     let `operator`: OperatorInfo?
     let live: LiveCounts
 
+    init(
+        id: String,
+        parentId: String?,
+        name: String,
+        slug: String,
+        kind: Kind,
+        metadata: [String: AnyJSON] = [:],
+        mc: MCInfo = MCInfo(url: nil, isRunning: false, startedAt: nil),
+        operator: OperatorInfo? = nil,
+        live: LiveCounts = LiveCounts(activeSessions: 0, activeRaces: 0, activePostings: 0)
+    ) {
+        self.id = id
+        self.parentId = parentId
+        self.name = name
+        self.slug = slug
+        self.kind = kind
+        self.metadata = metadata
+        self.mc = mc
+        self.operator = `operator`
+        self.live = live
+    }
+
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decode(String.self, forKey: .id)

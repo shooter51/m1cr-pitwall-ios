@@ -1,0 +1,27 @@
+{
+  "nodes": [
+    {
+      "id": "00000000-0000-0000-0000-000000000001",
+      "parent_id": null,
+      "name": "Laguna Seca",
+      "slug": "laguna-seca",
+      "kind": "location",
+      "metadata": {"ams2_mcp_url": "http://ams2-mcp:8080"},
+      "mc": {
+        "url": "https://pitwall.m1circuit.com",
+        "is_running": true,
+        "started_at": "2026-05-26T12:00:00Z"
+      },
+      "operator": {
+        "device_id": "device-abc123",
+        "display": "Pit Lane Console",
+        "attached_at": "2026-05-26T13:00:00Z"
+      },
+      "live": {
+        "active_sessions": 3,
+        "active_races": 1,
+        "active_postings": 1
+      }
+    }
+  ]
+}

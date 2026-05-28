@@ -1,5 +1,27 @@
 import Foundation
 
+/// Leaderboard entry returned by GET /api/pitwall/laps (grouped by driver).
+struct LeaderboardEntry: Codable, Sendable, Equatable {
+    let driverName: String
+    let bestLapMs: Int
+    let trackName: String
+    let vehicleClass: String
+    let lastAt: String?
+}
+
+/// Response wrappers for POST endpoints that return partial data.
+struct SessionCreateResponse: Codable, Sendable {
+    let sessionId: String
+    let rigId: String
+    let durationMinutes: Int
+}
+
+struct CompetitionCreateResponse: Codable, Sendable {
+    let id: String
+    let startsAt: String
+    let endsAt: String?
+}
+
 struct LapTime: Codable, Identifiable, Sendable, Equatable {
     let id: String
     let sessionId: String

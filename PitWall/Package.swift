@@ -21,7 +21,10 @@ let package = Package(
         .testTarget(
             name: "PitWallTests",
             dependencies: ["PitWall"],
-            path: "Sources/PitWallTests"
+            path: "Sources/PitWallTests",
+            resources: [
+                .copy("Fixtures"),
+            ]
         ),
     ]
 )

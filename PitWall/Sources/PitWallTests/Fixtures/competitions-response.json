@@ -1,0 +1,21 @@
+{
+  "competitions": [
+    {
+      "id": "c1f4a7b8-9d2e-4f3a-8b1c-5e6d7a8b9c0d",
+      "name": "Friday Night GT3 Challenge",
+      "type": "fastest_lap",
+      "status": "active",
+      "track_id": "laguna_seca",
+      "track_name": "Laguna Seca",
+      "vehicle_class": "GT3",
+      "vehicle_locked": null,
+      "rules": {"max_laps": 20, "min_valid_laps": 3},
+      "starts_at": "2026-05-28T00:00:00Z",
+      "ends_at": "2026-05-28T01:00:00Z",
+      "max_participants": 16,
+      "prize_description": "M1Circuit Season Points",
+      "org_id": "00000000-0000-0000-0000-000000000001",
+      "created_at": "2026-05-20T10:00:00Z"
+    }
+  ]
+}

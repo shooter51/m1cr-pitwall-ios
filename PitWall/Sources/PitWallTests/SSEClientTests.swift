@@ -170,7 +170,7 @@ struct SSEClientTests {
 
     private func sampleLiveStateJSON(ts: Int = 1700001234) -> String {
         """
-        {"ts":\(ts),"track":{"id":"brands-hatch","name":"Brands Hatch Indy","weather":"Clear"},"session":{"phase":"race","time_left_s":847},"rigs":[{"id":"rig-01","label":"RIG 1","location":"Bay 01","status":"occupied","hardware_profile":null,"ip_address":null,"qr_code_id":"qr-01","current_session_id":"s-01","created_at":1700000000,"updated_at":1700001000,"driver_name":"TOM","best_lap_ms":78432,"last_lap_ms":79012,"current_lap":8,"position":1,"gap_to_leader_ms":0,"pit_status":"on_track"}],"competition":null,"broadcast":{"mode":"auto","focus":null,"scene":null},"server":{"status":"running"}}
+        {"ts":\(ts),"track":{"id":"brands-hatch","name":"Brands Hatch Indy","weather":"Clear"},"session":{"phase":"race","time_left_s":847},"rigs":[{"id":"rig-01","label":"RIG 1","org_id":"00000000-0000-0000-0000-000000000001","status":"occupied","hardware_profile":null,"ip_address":null,"qr_code_id":"qr-01","current_session_id":"s-01","created_at":"2023-11-14T20:13:20Z","updated_at":"2023-11-14T20:30:00Z","driver_name":"TOM","best_lap_ms":78432,"last_lap_ms":79012,"current_lap":8,"position":1,"gap_to_leader_ms":0,"pit_status":"on_track"}],"competition":null,"broadcast":{"mode":"auto","focus":null,"scene":null},"server":{"status":"running"}}
         """
     }
 }

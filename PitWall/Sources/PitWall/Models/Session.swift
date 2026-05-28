@@ -9,12 +9,12 @@ struct Session: Codable, Identifiable, Sendable, Equatable {
     let driverPhone: String?
     let checkInMethod: CheckInMethod
     let status: SessionStatus
-    let startedAt: Int
-    let endedAt: Int?
+    let startedAt: String
+    let endedAt: String?
     let durationMinutes: Int?
     let steamParticipantId: Int?
     let experienceLevel: ExperienceLevel?
-    let metadata: String?
+    let metadata: AnyJSON?
 
     enum CheckInMethod: String, Codable, Sendable {
         case qr

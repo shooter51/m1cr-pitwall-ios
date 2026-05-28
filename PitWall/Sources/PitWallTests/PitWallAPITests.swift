@@ -40,8 +40,8 @@ struct PitWallAPITests {
         let laps = try await api.laps(filter: LapFilter(limit: 10))
         #expect(laps.count >= 0)
         for lap in laps {
-            #expect(!lap.id.isEmpty)
-            #expect(lap.lapTimeMs > 0)
+            #expect(!lap.driverName.isEmpty)
+            #expect(lap.bestLapMs > 0)
         }
     }
 

@@ -11,7 +11,7 @@ struct RigCardView: View {
                     Text(rig.label.uppercased())
                         .font(.system(size: 13, weight: .bold, design: .default))
                         .foregroundStyle(PW.silver)
-                    Text(rig.location)
+                    Text(rig.orgId)
                         .font(.system(size: 10))
                         .foregroundStyle(PW.silverDim)
                 }

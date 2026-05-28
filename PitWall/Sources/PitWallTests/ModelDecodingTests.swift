@@ -16,14 +16,14 @@ struct ModelDecodingTests {
         {
           "id": "rig-01",
           "label": "RIG 1",
-          "location": "Bay 01",
+          "org_id": "00000000-0000-0000-0000-000000000001",
           "status": "occupied",
-          "hardware_profile": "sim-rig-v2",
+          "hardware_profile": {"ram_gb": 32, "gpu": "RTX 4090"},
           "ip_address": "192.168.1.101",
           "qr_code_id": "rig-01-qr",
           "current_session_id": "session-abc",
-          "created_at": 1700000000,
-          "updated_at": 1700001000
+          "created_at": "2023-11-14T20:13:20Z",
+          "updated_at": "2023-11-14T20:30:00Z"
         }
         """.data(using: .utf8)!
 
@@ -32,14 +32,14 @@ struct ModelDecodingTests {
 
         #expect(rig.id == "rig-01")
         #expect(rig.label == "RIG 1")
-        #expect(rig.location == "Bay 01")
+        #expect(rig.orgId == "00000000-0000-0000-0000-000000000001")
         #expect(rig.status == .occupied)
-        #expect(rig.hardwareProfile == "sim-rig-v2")
+        #expect(rig.hardwareProfile != nil)
         #expect(rig.ipAddress == "192.168.1.101")
         #expect(rig.qrCodeId == "rig-01-qr")
         #expect(rig.currentSessionId == "session-abc")
-        #expect(rig.createdAt == 1_700_000_000)
-        #expect(rig.updatedAt == 1_700_001_000)
+        #expect(rig.createdAt == "2023-11-14T20:13:20Z")
+        #expect(rig.updatedAt == "2023-11-14T20:30:00Z")
     }
 
     @Test("Rig decodes all status values")
@@ -67,6 +67,7 @@ struct ModelDecodingTests {
         let rig = try decoder.decode(Rig.self, from: json)
         #expect(rig.hardwareProfile == nil)
         #expect(rig.ipAddress == nil)
+        #expect(rig.qrCodeId == nil)
         #expect(rig.currentSessionId == nil)
     }
 
@@ -78,14 +79,14 @@ struct ModelDecodingTests {
         {
           "id": "rig-01",
           "label": "RIG 1",
-          "location": "Bay 01",
+          "org_id": "00000000-0000-0000-0000-000000000001",
           "status": "occupied",
           "hardware_profile": null,
           "ip_address": null,
           "qr_code_id": "qr-01",
           "current_session_id": "s-01",
-          "created_at": 1700000000,
-          "updated_at": 1700001000,
+          "created_at": "2023-11-14T20:13:20Z",
+          "updated_at": "2023-11-14T20:30:00Z",
           "driver_name": "TOM GIBSON",
           "best_lap_ms": 78432,
           "last_lap_ms": 79012,
@@ -139,7 +140,7 @@ struct ModelDecodingTests {
           "driver_phone": null,
           "check_in_method": "operator",
           "status": "active",
-          "started_at": 1700000000,
+          "started_at": "2023-11-14T20:13:20Z",
           "ended_at": null,
           "duration_minutes": 30,
           "steam_participant_id": 12345,
@@ -157,7 +158,7 @@ struct ModelDecodingTests {
         #expect(session.driverEmail == "tom@example.com")
         #expect(session.checkInMethod == .operator)
         #expect(session.status == .active)
-        #expect(session.startedAt == 1_700_000_000)
+        #expect(session.startedAt == "2023-11-14T20:13:20Z")
         #expect(session.endedAt == nil)
         #expect(session.durationMinutes == 30)
         #expect(session.steamParticipantId == 12345)
@@ -266,11 +267,11 @@ struct ModelDecodingTests {
           "vehicle_class": "gt3",
           "vehicle_locked": null,
           "rules": null,
-          "starts_at": null,
-          "ends_at": null,
+          "starts_at": "2026-05-28T00:00:00Z",
+          "ends_at": "2026-05-28T01:00:00Z",
           "max_participants": 10,
           "prize_description": "£50 voucher",
-          "created_at": 1700000000
+          "created_at": "2023-11-14T20:13:20Z"
         }
         """.data(using: .utf8)!
 
@@ -282,6 +283,8 @@ struct ModelDecodingTests {
         #expect(comp.status == .active)
         #expect(comp.maxParticipants == 10)
         #expect(comp.prizeDescription == "£50 voucher")
+        #expect(comp.startsAt == "2026-05-28T00:00:00Z")
+        #expect(comp.createdAt == "2023-11-14T20:13:20Z")
     }
 
     @Test("Competition type values decode correctly")
@@ -336,7 +339,7 @@ struct ModelDecodingTests {
         let decoder = snakeDecoder()
         let state = try decoder.decode(LiveState.self, from: json)
 
-        #expect(state.ts > 0)
+        #expect(state.ts == 1700001234567)
         #expect(state.track.id == "brands-hatch")
         #expect(state.track.weather == "Clear")
         #expect(state.session.phase == "race")
@@ -399,14 +402,14 @@ struct ModelDecodingTests {
         {
           "id": "rig-01",
           "label": "RIG 1",
-          "location": "Bay 01",
+          "org_id": "00000000-0000-0000-0000-000000000001",
           "status": "\(status)",
-          "hardware_profile": \(nullable ? "null" : "\"sim-rig-v2\""),
+          "hardware_profile": \(nullable ? "null" : "{\"ram_gb\": 32}"),
           "ip_address": \(nullable ? "null" : "\"192.168.1.101\""),
-          "qr_code_id": "rig-01-qr",
+          "qr_code_id": \(nullable ? "null" : "\"rig-01-qr\""),
           "current_session_id": \(nullable ? "null" : "\"session-abc\""),
-          "created_at": 1700000000,
-          "updated_at": 1700001000
+          "created_at": "2023-11-14T20:13:20Z",
+          "updated_at": "2023-11-14T20:30:00Z"
         }
         """.data(using: .utf8)!
     }
@@ -416,14 +419,14 @@ struct ModelDecodingTests {
         {
           "id": "rig-01",
           "label": "RIG 1",
-          "location": "Bay 01",
+          "org_id": "00000000-0000-0000-0000-000000000001",
           "status": "occupied",
           "hardware_profile": null,
           "ip_address": null,
           "qr_code_id": "qr-01",
           "current_session_id": "s-01",
-          "created_at": 1700000000,
-          "updated_at": 1700001000,
+          "created_at": "2023-11-14T20:13:20Z",
+          "updated_at": "2023-11-14T20:30:00Z",
           "driver_name": "TOM",
           "best_lap_ms": 78000,
           "last_lap_ms": 79000,
@@ -446,7 +449,7 @@ struct ModelDecodingTests {
           "driver_phone": null,
           "check_in_method": "operator",
           "status": "\(status)",
-          "started_at": 1700000000,
+          "started_at": "2023-11-14T20:13:20Z",
           "ended_at": null,
           "duration_minutes": 30,
           "steam_participant_id": null,
@@ -472,7 +475,7 @@ struct ModelDecodingTests {
           "ends_at": null,
           "max_participants": null,
           "prize_description": null,
-          "created_at": 1700000000
+          "created_at": "2023-11-14T20:13:20Z"
         }
         """.data(using: .utf8)!
     }
@@ -487,14 +490,14 @@ struct ModelDecodingTests {
             {
               "id": "rig-01",
               "label": "RIG 1",
-              "location": "Bay 01",
+              "org_id": "00000000-0000-0000-0000-000000000001",
               "status": "occupied",
               "hardware_profile": null,
               "ip_address": null,
               "qr_code_id": "qr-01",
               "current_session_id": "s-01",
-              "created_at": 1700000000,
-              "updated_at": 1700001000,
+              "created_at": "2023-11-14T20:13:20Z",
+              "updated_at": "2023-11-14T20:30:00Z",
               "driver_name": "TOM GIBSON",
               "best_lap_ms": 78432,
               "last_lap_ms": 79012,
@@ -506,14 +509,14 @@ struct ModelDecodingTests {
             {
               "id": "rig-02",
               "label": "RIG 2",
-              "location": "Bay 02",
+              "org_id": "00000000-0000-0000-0000-000000000001",
               "status": "available",
               "hardware_profile": null,
               "ip_address": null,
               "qr_code_id": "qr-02",
               "current_session_id": null,
-              "created_at": 1700000000,
-              "updated_at": 1700001000,
+              "created_at": "2023-11-14T20:13:20Z",
+              "updated_at": "2023-11-14T20:30:00Z",
               "driver_name": null,
               "best_lap_ms": null,
               "last_lap_ms": null,
@@ -533,11 +536,11 @@ struct ModelDecodingTests {
             "vehicle_class": "gt3",
             "vehicle_locked": null,
             "rules": null,
-            "starts_at": null,
-            "ends_at": null,
+            "starts_at": "2026-05-28T00:00:00Z",
+            "ends_at": "2026-05-28T01:00:00Z",
             "max_participants": 10,
             "prize_description": "£50 voucher",
-            "created_at": 1700000000
+            "created_at": "2023-11-14T20:13:20Z"
           },
           "broadcast": {"mode": "auto", "focus": null, "scene": null},
           "server": {"status": "running"}

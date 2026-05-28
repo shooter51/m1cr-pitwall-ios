@@ -36,7 +36,9 @@ actor PitWallAPI {
     // MARK: - Rigs
 
     func rigs() async throws -> [Rig] {
-        try await get("/api/pitwall/rigs")
+        struct RigsResponse: Decodable { let rigs: [Rig] }
+        let w: RigsResponse = try await get("/api/pitwall/rigs")
+        return w.rigs
     }
 
     func createRig(id: String, label: String, qrCodeId: String? = nil, ipAddress: String? = nil) async throws -> Rig {
@@ -61,10 +63,12 @@ actor PitWallAPI {
     // MARK: - Sessions
 
     func sessions(filter: SessionFilter? = nil) async throws -> [Session] {
-        try await get("/api/pitwall/sessions", queryItems: filter?.queryItems)
+        struct SessionsResponse: Decodable { let sessions: [Session] }
+        let w: SessionsResponse = try await get("/api/pitwall/sessions", queryItems: filter?.queryItems)
+        return w.sessions
     }
 
-    func startSession(_ params: StartSessionParams) async throws -> Session {
+    func startSession(_ params: StartSessionParams) async throws -> SessionCreateResponse {
         try await post("/api/pitwall/sessions", body: params.body)
     }
 
@@ -74,17 +78,21 @@ actor PitWallAPI {
 
     // MARK: - Laps
 
-    func laps(filter: LapFilter? = nil) async throws -> [LapTime] {
-        try await get("/api/pitwall/laps", queryItems: filter?.queryItems)
+    func laps(filter: LapFilter? = nil) async throws -> [LeaderboardEntry] {
+        struct LapsResponse: Decodable { let rows: [LeaderboardEntry] }
+        let w: LapsResponse = try await get("/api/pitwall/laps", queryItems: filter?.queryItems)
+        return w.rows
     }
 
     // MARK: - Competitions
 
     func competitions() async throws -> [Competition] {
-        try await get("/api/pitwall/competitions")
+        struct CompetitionsResponse: Decodable { let competitions: [Competition] }
+        let w: CompetitionsResponse = try await get("/api/pitwall/competitions")
+        return w.competitions
     }
 
-    func createCompetition(_ params: CreateCompetitionParams) async throws -> Competition {
+    func createCompetition(_ params: CreateCompetitionParams) async throws -> CompetitionCreateResponse {
         try await post("/api/pitwall/competitions", body: params.body)
     }
 

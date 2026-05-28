@@ -138,7 +138,7 @@ enum MockRigProvider {
             endsAt: nil,
             maxParticipants: nil,
             prizeDescription: "£50 voucher",
-            createdAt: 1_700_000_000
+            createdAt: "2023-11-14T20:13:20Z"
         ),
         broadcast: LiveState.BroadcastInfo(mode: .auto, focus: nil, scene: nil),
         server: LiveState.ServerInfo(status: .running)
@@ -160,14 +160,14 @@ enum MockRigProvider {
         LiveRig(
             id: id,
             label: label,
-            location: "Bay \(id.suffix(2))",
+            orgId: "00000000-0000-0000-0000-000000000001",
             status: status,
             hardwareProfile: nil,
             ipAddress: nil,
             qrCodeId: "\(id)-qr",
             currentSessionId: status == .occupied ? "session-\(id)" : nil,
-            createdAt: 1_700_000_000,
-            updatedAt: Int(Date().timeIntervalSince1970),
+            createdAt: "2023-11-14T20:13:20Z",
+            updatedAt: "2023-11-14T20:13:20Z",
             driverName: driverName,
             bestLapMs: bestLap,
             lastLapMs: lastLap,

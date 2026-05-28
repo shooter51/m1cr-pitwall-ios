@@ -1,0 +1,22 @@
+{
+  "postings": [
+    {
+      "id": "d2e3f4a5-b6c7-4d8e-9f0a-1b2c3d4e5f60",
+      "source_org_id": "00000000-0000-0000-0000-000000000001",
+      "target_org_id": "00000000-0000-0000-0000-000000000002",
+      "competition_id": "c1f4a7b8-9d2e-4f3a-8b1c-5e6d7a8b9c0d",
+      "track_name": "Laguna Seca",
+      "track_id": "laguna_seca",
+      "vehicle_class": "GT3",
+      "vehicle_name": "Porsche 911 GT3 R",
+      "slot_total": 8,
+      "slot_open": 5,
+      "thumbnail_url": null,
+      "status": "live",
+      "started_at": "2026-05-26T14:00:00Z",
+      "ends_at": "2026-05-26T15:00:00Z",
+      "source_name": "Laguna Seca",
+      "source_slug": "laguna-seca"
+    }
+  ]
+}

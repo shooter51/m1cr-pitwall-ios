@@ -149,7 +149,7 @@ struct CompetitionViewModelTests {
             "ends_at": null,
             "max_participants": 10,
             "prize_description": "£50 voucher",
-            "created_at": 1700000000
+            "created_at": "2023-11-14T20:13:20Z"
         }
         """.data(using: .utf8)!
 
@@ -166,7 +166,7 @@ struct CompetitionViewModelTests {
         #expect(comp.vehicleClass == "GT3")
         #expect(comp.maxParticipants == 10)
         #expect(comp.prizeDescription == "£50 voucher")
-        #expect(comp.createdAt == 1_700_000_000)
+        #expect(comp.createdAt == "2023-11-14T20:13:20Z")
     }
 
     @MainActor

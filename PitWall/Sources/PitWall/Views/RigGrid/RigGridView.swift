@@ -140,7 +140,7 @@ struct RigDetailSheet: View {
                     Text(rig.label)
                         .font(.system(size: 28, weight: .bold))
                         .foregroundStyle(PW.silver)
-                    Text(rig.location)
+                    Text(rig.orgId)
                         .font(.system(size: 14))
                         .foregroundStyle(PW.silverMid)
                     Divider().background(PW.line)

@@ -3,14 +3,14 @@ import Foundation
 struct Rig: Codable, Identifiable, Sendable, Equatable {
     let id: String
     let label: String
-    let location: String
+    let orgId: String
     let status: RigStatus
-    let hardwareProfile: String?
+    let hardwareProfile: AnyJSON?
     let ipAddress: String?
-    let qrCodeId: String
+    let qrCodeId: String?
     let currentSessionId: String?
-    let createdAt: Int
-    let updatedAt: Int
+    let createdAt: String
+    let updatedAt: String
 
     enum RigStatus: String, Codable, Sendable {
         case available
@@ -24,14 +24,14 @@ struct Rig: Codable, Identifiable, Sendable, Equatable {
 struct LiveRig: Codable, Identifiable, Sendable, Equatable {
     let id: String
     let label: String
-    let location: String
+    let orgId: String
     let status: Rig.RigStatus
-    let hardwareProfile: String?
+    let hardwareProfile: AnyJSON?
     let ipAddress: String?
-    let qrCodeId: String
+    let qrCodeId: String?
     let currentSessionId: String?
-    let createdAt: Int
-    let updatedAt: Int
+    let createdAt: String
+    let updatedAt: String
 
     // Live telemetry fields (only present during an active session)
     let driverName: String?

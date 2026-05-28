@@ -1,0 +1,76 @@
+{
+  "ts": 1748267520000,
+  "track": {
+    "id": "laguna_seca",
+    "name": "Laguna Seca",
+    "weather": "Clear"
+  },
+  "session": {
+    "phase": "race",
+    "time_left_s": 847
+  },
+  "rigs": [
+    {
+      "id": "rig-01",
+      "label": "RIG 1",
+      "org_id": "00000000-0000-0000-0000-000000000001",
+      "status": "occupied",
+      "hardware_profile": null,
+      "ip_address": "192.168.1.101",
+      "qr_code_id": "550e8400-e29b-41d4-a716-446655440001",
+      "current_session_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+      "created_at": "2026-01-15T09:00:00Z",
+      "updated_at": "2026-05-26T14:32:00Z",
+      "driver_name": "TOM GIBSON",
+      "best_lap_ms": 95432,
+      "last_lap_ms": 96100,
+      "current_lap": 8,
+      "position": 1,
+      "gap_to_leader_ms": 0,
+      "pit_status": "on_track"
+    },
+    {
+      "id": "rig-02",
+      "label": "RIG 2",
+      "org_id": "00000000-0000-0000-0000-000000000001",
+      "status": "available",
+      "hardware_profile": null,
+      "ip_address": null,
+      "qr_code_id": null,
+      "current_session_id": null,
+      "created_at": "2026-01-15T09:00:00Z",
+      "updated_at": "2026-05-26T14:00:00Z",
+      "driver_name": null,
+      "best_lap_ms": null,
+      "last_lap_ms": null,
+      "current_lap": null,
+      "position": null,
+      "gap_to_leader_ms": null,
+      "pit_status": null
+    }
+  ],
+  "competition": {
+    "id": "c1f4a7b8-9d2e-4f3a-8b1c-5e6d7a8b9c0d",
+    "name": "Friday Night GT3 Challenge",
+    "type": "fastest_lap",
+    "status": "active",
+    "track_id": "laguna_seca",
+    "track_name": "Laguna Seca",
+    "vehicle_class": "GT3",
+    "vehicle_locked": null,
+    "rules": null,
+    "starts_at": "2026-05-28T00:00:00Z",
+    "ends_at": "2026-05-28T01:00:00Z",
+    "max_participants": 16,
+    "prize_description": "M1Circuit Season Points",
+    "created_at": "2026-05-20T10:00:00Z"
+  },
+  "broadcast": {
+    "mode": "auto",
+    "focus": null,
+    "scene": null
+  },
+  "server": {
+    "status": "running"
+  }
+}

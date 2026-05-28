@@ -1,0 +1,14 @@
+{
+  "track": "laguna_seca",
+  "class": "GT3",
+  "period": "alltime",
+  "rows": [
+    {
+      "driver_name": "Tom Gibson",
+      "best_lap_ms": 95432,
+      "track_name": "Laguna Seca",
+      "vehicle_class": "GT3",
+      "last_at": "2026-05-26T14:15:00Z"
+    }
+  ]
+}
