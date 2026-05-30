@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-test:
+    name: Build & Test
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate Xcode project
+        run: xcodegen generate
+      - name: Build for simulator
+        run: |
+          xcodebuild -project PitWall.xcodeproj \
+            -scheme PitWall \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M5)' \
+            build 2>&1 | tail -20
+      - name: Run tests (SPM)
+        run: |
+          cd PitWall && swift test 2>&1 | tail -30
